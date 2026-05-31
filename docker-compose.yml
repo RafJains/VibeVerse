@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: vibeverse_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vibeverse_db
+      POSTGRES_USER: vibeverse_user
+      POSTGRES_PASSWORD: vibeverse_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vibeverse_user -d vibeverse_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: vibeverse_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
