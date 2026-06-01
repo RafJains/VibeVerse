@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.admin_entities import router as admin_entities_router
+from app.api.routes.entities import router as entities_router
 from app.api.routes.health import router as health_router
 from app.core.config import settings
 
@@ -16,6 +18,8 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(entities_router)
+app.include_router(admin_entities_router)
 
 
 @app.get("/")
