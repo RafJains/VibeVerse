@@ -35,6 +35,7 @@ pnpm-debug.log*
 # Cache and build outputs
 .cache/
 coverage/
+*.tsbuildinfo
 
 # IDE / OS
 .idea/
