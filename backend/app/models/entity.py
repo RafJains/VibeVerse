@@ -84,6 +84,7 @@ class Entity(Base):
         back_populates="entity",
         cascade="all, delete-orphan",
     )
+    collection_items: Mapped[list["CollectionItem"]] = relationship(back_populates="entity")
 
 
 class EntityTag(Base):

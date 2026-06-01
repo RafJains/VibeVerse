@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
+from app.models.collection import Collection, CollectionItem
 from app.models.entity import (
     Entity,
     EntityCredit,
@@ -204,6 +205,69 @@ def add_review_if_missing(
     return review
 
 
+def get_or_create_collection(
+    db: Session,
+    *,
+    user: User,
+    collection_type: str,
+    name: str,
+    description: str | None = None,
+    visibility: str = "private",
+) -> Collection:
+    collection = (
+        db.query(Collection)
+        .filter(
+            Collection.user_id == user.id,
+            Collection.collection_type == collection_type,
+            Collection.name == name,
+        )
+        .one_or_none()
+    )
+    if collection is not None:
+        return collection
+
+    collection = Collection(
+        user_id=user.id,
+        name=name,
+        description=description,
+        collection_type=collection_type,
+        visibility=visibility,
+    )
+    db.add(collection)
+    db.flush()
+    return collection
+
+
+def add_collection_item_if_missing(
+    db: Session,
+    *,
+    collection: Collection,
+    entity: Entity,
+    note: str | None = None,
+    order_index: int = 0,
+) -> CollectionItem:
+    item = (
+        db.query(CollectionItem)
+        .filter(
+            CollectionItem.collection_id == collection.id,
+            CollectionItem.entity_id == entity.id,
+        )
+        .one_or_none()
+    )
+    if item is not None:
+        return item
+
+    item = CollectionItem(
+        collection_id=collection.id,
+        entity_id=entity.id,
+        note=note,
+        order_index=order_index,
+    )
+    db.add(item)
+    db.flush()
+    return item
+
+
 def seed_entities() -> None:
     db = SessionLocal()
     try:
@@ -312,6 +376,55 @@ def seed_entities() -> None:
             title="Instant synth-pop classic",
             body="A polished track with a sharp hook and strong replay value.",
             tags=["synth-pop", "replayable"],
+        )
+
+        demo_watchlist = get_or_create_collection(
+            db,
+            user=demo_user,
+            collection_type="watchlist",
+            name="Watchlist",
+            description="Demo user's saved watchlist.",
+        )
+        demo_favourites = get_or_create_collection(
+            db,
+            user=demo_user,
+            collection_type="favourites",
+            name="Favourites",
+            description="Demo user's favourite entities.",
+        )
+        mind_bending = get_or_create_collection(
+            db,
+            user=critic_user,
+            collection_type="custom_collection",
+            name="Mind-bending cinema",
+            description="Films with layered stories and reality-bending ideas.",
+            visibility="public",
+        )
+
+        add_collection_item_if_missing(
+            db,
+            collection=demo_watchlist,
+            entity=inception,
+            order_index=1,
+        )
+        add_collection_item_if_missing(
+            db,
+            collection=demo_watchlist,
+            entity=demon_slayer,
+            order_index=2,
+        )
+        add_collection_item_if_missing(
+            db,
+            collection=demo_favourites,
+            entity=blinding_lights,
+            order_index=1,
+        )
+        add_collection_item_if_missing(
+            db,
+            collection=mind_bending,
+            entity=inception,
+            note="A strong fit for high-concept film discovery.",
+            order_index=1,
         )
 
         db.commit()

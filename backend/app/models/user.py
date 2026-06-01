@@ -30,6 +30,10 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     review_reports: Mapped[list["ReviewReport"]] = relationship(back_populates="reporter")
+    collections: Mapped[list["Collection"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class Profile(Base):

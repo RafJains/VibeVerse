@@ -1,3 +1,4 @@
+from app.models.collection import Collection, CollectionItem
 from app.models.entity import (
     Entity,
     EntityAlias,
@@ -15,6 +16,8 @@ from app.models.review import Review, ReviewEditHistory, ReviewReport, ReviewTag
 from app.models.user import Profile, User
 
 __all__ = [
+    "Collection",
+    "CollectionItem",
     "Entity",
     "EntityAlias",
     "EntityCredit",

@@ -1,3 +1,12 @@
+from app.schemas.collection import (
+    CollectionCreate,
+    CollectionItemCreate,
+    CollectionItemRead,
+    CollectionItemUpdate,
+    CollectionListItem,
+    CollectionRead,
+    CollectionUpdate,
+)
 from app.schemas.entity import (
     EntityCreate,
     EntityCreditRead,
@@ -21,6 +30,13 @@ from app.schemas.review import (
 )
 
 __all__ = [
+    "CollectionCreate",
+    "CollectionItemCreate",
+    "CollectionItemRead",
+    "CollectionItemUpdate",
+    "CollectionListItem",
+    "CollectionRead",
+    "CollectionUpdate",
     "EntityCreate",
     "EntityCreditRead",
     "EntityListItem",

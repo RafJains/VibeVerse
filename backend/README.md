@@ -7,7 +7,8 @@ Current scope:
 - Phase 1 backend foundation.
 - Phase 2 core entity backend foundation.
 - Phase 4A backend reviews and ratings foundation.
-- No auth, collections, communities, feed, ingestion API calls, recommendations, ML, or frontend review UI yet.
+- Phase 4B backend collections foundation.
+- No auth, communities, feed, ingestion API calls, recommendations, ML, or frontend collection UI yet.
 
 ## Setup
 
@@ -63,6 +64,12 @@ The review system is included in migration `0002_create_review_tables.py`. Apply
 alembic upgrade head
 ```
 
+The collection system is included in migration `0003_create_collection_tables.py`. Apply it with:
+
+```powershell
+alembic upgrade head
+```
+
 ## Seed Data
 
 After PostgreSQL is running and migrations are applied:
@@ -73,6 +80,7 @@ python -m app.db.seed
 
 The seed script inserts sample Film, Series, Song, Album, and Person entities.
 It also inserts demo users and sample reviews when review tables are migrated.
+It also inserts sample watchlist, favourites, and custom collections when collection tables are migrated.
 
 ## Entity API Examples
 
@@ -158,4 +166,62 @@ Invoke-RestMethod "http://127.0.0.1:8000/reviews/1/report" `
   -Method Post `
   -ContentType "application/json" `
   -Body '{"reporter_user_id":2,"reason":"spoiler","details":"This review may need a spoiler flag."}'
+```
+
+## Collection API Examples
+
+Auth is not implemented yet, so collection requests accept `user_id` directly.
+
+List collections for a user:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/collections/user/1"
+```
+
+Get a collection:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/collections/1"
+```
+
+List collection items:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/collections/1/items"
+```
+
+Create a custom collection:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/collections" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"user_id":1,"name":"Comfort picks","description":"Entities to revisit.","collection_type":"custom_collection","visibility":"private"}'
+```
+
+Add an entity to a collection:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/collections/1/items" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"entity_id":4,"note":"Add this next.","order_index":3}'
+```
+
+Remove an entity from a collection:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/collections/1/items/4" -Method Delete
+```
+
+Save to watchlist:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/users/1/watchlist/1" -Method Post
+```
+
+Save to favourites:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/users/1/favourites/3" -Method Post
 ```
