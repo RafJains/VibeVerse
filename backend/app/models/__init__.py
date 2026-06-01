@@ -11,6 +11,7 @@ from app.models.entity import (
     RawExternalPayload,
     UserEvent,
 )
+from app.models.review import Review, ReviewEditHistory, ReviewReport, ReviewTag
 from app.models.user import Profile, User
 
 __all__ = [
@@ -25,6 +26,10 @@ __all__ = [
     "IngestionJob",
     "Profile",
     "RawExternalPayload",
+    "Review",
+    "ReviewEditHistory",
+    "ReviewReport",
+    "ReviewTag",
     "User",
     "UserEvent",
 ]

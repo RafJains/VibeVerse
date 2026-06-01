@@ -80,6 +80,10 @@ class Entity(Base):
         cascade="all, delete-orphan",
     )
     events: Mapped[list["UserEvent"]] = relationship(back_populates="entity")
+    reviews: Mapped[list["Review"]] = relationship(
+        back_populates="entity",
+        cascade="all, delete-orphan",
+    )
 
 
 class EntityTag(Base):

@@ -9,6 +9,16 @@ from app.schemas.entity import (
     EntityUpdate,
     ExternalIdRead,
 )
+from app.schemas.review import (
+    EntityRatingSummary,
+    ReviewCreate,
+    ReviewListItem,
+    ReviewRead,
+    ReviewReportCreate,
+    ReviewReportRead,
+    ReviewTagRead,
+    ReviewUpdate,
+)
 
 __all__ = [
     "EntityCreate",
@@ -20,4 +30,12 @@ __all__ = [
     "EntityTagRead",
     "EntityUpdate",
     "ExternalIdRead",
+    "EntityRatingSummary",
+    "ReviewCreate",
+    "ReviewListItem",
+    "ReviewRead",
+    "ReviewReportCreate",
+    "ReviewReportRead",
+    "ReviewTagRead",
+    "ReviewUpdate",
 ]

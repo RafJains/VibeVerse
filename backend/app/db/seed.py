@@ -12,6 +12,25 @@ from app.models.entity import (
     EntityTag,
     EntityType,
 )
+from app.models.review import Review, ReviewTag
+from app.models.user import User
+
+
+def get_or_create_user(
+    db: Session,
+    *,
+    email: str,
+    username: str,
+    role: str = "normal_user",
+) -> User:
+    user = db.query(User).filter(User.username == username).one_or_none()
+    if user is not None:
+        return user
+
+    user = User(email=email, username=username, role=role, is_active=True)
+    db.add(user)
+    db.flush()
+    return user
 
 
 def get_or_create_entity(
@@ -138,9 +157,67 @@ def add_relation_if_missing(
         )
 
 
+def add_review_tag_if_missing(db: Session, review: Review, tag: str) -> None:
+    exists = (
+        db.query(ReviewTag)
+        .filter(ReviewTag.review_id == review.id, ReviewTag.tag == tag)
+        .one_or_none()
+    )
+    if exists is None:
+        db.add(ReviewTag(review_id=review.id, tag=tag))
+
+
+def add_review_if_missing(
+    db: Session,
+    *,
+    entity: Entity,
+    user: User,
+    rating: float,
+    title: str,
+    body: str,
+    tags: list[str],
+    spoiler: bool = False,
+    visibility: str = "public",
+) -> Review:
+    review = (
+        db.query(Review)
+        .filter(Review.entity_id == entity.id, Review.user_id == user.id)
+        .one_or_none()
+    )
+    if review is None:
+        review = Review(
+            entity_id=entity.id,
+            user_id=user.id,
+            rating=rating,
+            title=title,
+            body=body,
+            spoiler=spoiler,
+            visibility=visibility,
+            is_deleted=False,
+        )
+        db.add(review)
+        db.flush()
+
+    for tag in tags:
+        add_review_tag_if_missing(db, review, tag)
+
+    return review
+
+
 def seed_entities() -> None:
     db = SessionLocal()
     try:
+        demo_user = get_or_create_user(
+            db,
+            email="demo_user@vibeverse.local",
+            username="demo_user",
+        )
+        critic_user = get_or_create_user(
+            db,
+            email="critic_user@vibeverse.local",
+            username="critic_user",
+        )
+
         inception = get_or_create_entity(
             db,
             name="Inception",
@@ -206,6 +283,35 @@ def seed_entities() -> None:
             after_hours,
             blinding_lights,
             relation_type="includes_song",
+        )
+
+        add_review_if_missing(
+            db,
+            entity=inception,
+            user=critic_user,
+            rating=4.5,
+            title="A layered blockbuster",
+            body="A precise, memorable sci-fi thriller with strong momentum and visual clarity.",
+            tags=["sci-fi", "mind-bending"],
+        )
+        add_review_if_missing(
+            db,
+            entity=demon_slayer,
+            user=demo_user,
+            rating=4.0,
+            title="High-energy anime",
+            body="A visually striking series with emotional stakes and standout action sequences.",
+            tags=["anime", "action"],
+            spoiler=False,
+        )
+        add_review_if_missing(
+            db,
+            entity=blinding_lights,
+            user=demo_user,
+            rating=5.0,
+            title="Instant synth-pop classic",
+            body="A polished track with a sharp hook and strong replay value.",
+            tags=["synth-pop", "replayable"],
         )
 
         db.commit()

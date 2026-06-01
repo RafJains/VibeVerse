@@ -6,7 +6,8 @@ Current scope:
 
 - Phase 1 backend foundation.
 - Phase 2 core entity backend foundation.
-- No auth, reviews, collections, communities, feed, ingestion API calls, recommendations, ML, or frontend implementation yet.
+- Phase 4A backend reviews and ratings foundation.
+- No auth, collections, communities, feed, ingestion API calls, recommendations, ML, or frontend review UI yet.
 
 ## Setup
 
@@ -56,6 +57,12 @@ For future model changes, create a new migration:
 alembic revision --autogenerate -m "create core entity tables"
 ```
 
+The review system is included in migration `0002_create_review_tables.py`. Apply it with the same command:
+
+```powershell
+alembic upgrade head
+```
+
 ## Seed Data
 
 After PostgreSQL is running and migrations are applied:
@@ -65,6 +72,7 @@ python -m app.db.seed
 ```
 
 The seed script inserts sample Film, Series, Song, Album, and Person entities.
+It also inserts demo users and sample reviews when review tables are migrated.
 
 ## Entity API Examples
 
@@ -102,3 +110,52 @@ Invoke-RestMethod "http://127.0.0.1:8000/admin/entities" `
 ```
 
 Admin routes are intentionally unprotected for now. Authentication and authorization are later phases.
+
+## Review API Examples
+
+Auth is not implemented yet, so review write requests accept `user_id` directly.
+
+List reviews for an entity:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/entities/1/reviews"
+```
+
+Alternative entity reviews route:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/reviews/entity/1"
+```
+
+Get a rating summary:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/entities/1/rating-summary"
+```
+
+Create a review:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/reviews" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"entity_id":1,"user_id":1,"rating":4.5,"title":"Strong watch","body":"A polished entertainment experience.","spoiler":false,"visibility":"public","tags":["sample"]}'
+```
+
+Update a review:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/reviews/1" `
+  -Method Patch `
+  -ContentType "application/json" `
+  -Body '{"rating":5.0,"body":"Updated review body.","tags":["updated"]}'
+```
+
+Report a review:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/reviews/1/report" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"reporter_user_id":2,"reason":"spoiler","details":"This review may need a spoiler flag."}'
+```
