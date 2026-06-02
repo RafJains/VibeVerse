@@ -20,11 +20,9 @@ import {
   getEntityReviews,
   getErrorMessage,
 } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import type { Entity, EntityCredit, EntityMedia, EntityRelation } from "@/types/entity";
 import type { EntityRatingSummary, ReviewListItem, ReviewVisibility } from "@/types/review";
-
-// Temporary until auth is implemented and the logged-in user comes from session state.
-const DEMO_USER_ID = 1;
 
 type EntityDetailState = {
   entity: Entity;
@@ -55,6 +53,7 @@ const initialReviewForm: ReviewFormState = {
 
 export default function EntityDetailPage() {
   const params = useParams<{ id: string }>();
+  const { isAuthenticated, isLoading: isAuthLoading, user } = useAuth();
   const [data, setData] = useState<EntityDetailState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +66,7 @@ export default function EntityDetailPage() {
   const [savingTarget, setSavingTarget] = useState<"watchlist" | "favourites" | null>(null);
 
   const entityId = Number(params.id);
+  const canUseUserActions = isAuthenticated && !isAuthLoading && user !== null;
 
   async function loadEntityDetails(shouldUpdate: () => boolean = () => true) {
     if (!Number.isInteger(entityId) || entityId <= 0) {
@@ -118,6 +118,11 @@ export default function EntityDetailPage() {
     setReviewMessage(null);
     setReviewError(null);
 
+    if (!canUseUserActions || !user) {
+      setReviewError("Log in to review this entity.");
+      return;
+    }
+
     if (!data) {
       return;
     }
@@ -132,7 +137,7 @@ export default function EntityDetailPage() {
     try {
       await createReview({
         entity_id: data.entity.id,
-        user_id: DEMO_USER_ID,
+        user_id: user.id,
         rating: Number(reviewForm.rating),
         title: reviewForm.title.trim() || null,
         body,
@@ -155,6 +160,11 @@ export default function EntityDetailPage() {
   }
 
   async function handleSave(target: "watchlist" | "favourites") {
+    if (!canUseUserActions || !user) {
+      setSaveError("Log in to save this entity.");
+      return;
+    }
+
     if (!data) {
       return;
     }
@@ -165,10 +175,10 @@ export default function EntityDetailPage() {
 
     try {
       if (target === "watchlist") {
-        await addToWatchlist(DEMO_USER_ID, data.entity.id);
+        await addToWatchlist(user.id, data.entity.id);
         setSaveMessage("Saved to watchlist.");
       } else {
-        await addToFavourites(DEMO_USER_ID, data.entity.id);
+        await addToFavourites(user.id, data.entity.id);
         setSaveMessage("Saved to favourites.");
       }
     } catch (saveFailure) {
@@ -242,27 +252,32 @@ export default function EntityDetailPage() {
 
       <section className="mb-6 rounded-lg border border-border bg-card p-5">
         <h2 className="text-lg font-semibold">Save actions</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Using demo user #{DEMO_USER_ID} until authentication is implemented.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => handleSave("watchlist")}
-            disabled={savingTarget !== null}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {savingTarget === "watchlist" ? "Saving..." : "Add to watchlist"}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSave("favourites")}
-            disabled={savingTarget !== null}
-            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {savingTarget === "favourites" ? "Saving..." : "Add to favourites"}
-          </button>
-        </div>
+        {isAuthLoading ? (
+          <p className="mt-2 text-sm text-muted-foreground">Checking session...</p>
+        ) : canUseUserActions ? (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => handleSave("watchlist")}
+              disabled={savingTarget !== null}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingTarget === "watchlist" ? "Saving..." : "Add to watchlist"}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave("favourites")}
+              disabled={savingTarget !== null}
+              className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingTarget === "favourites" ? "Saving..." : "Add to favourites"}
+            </button>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Log in to review or save this entity.
+          </p>
+        )}
         {saveMessage ? <p className="mt-3 text-sm text-green-700">{saveMessage}</p> : null}
         {saveError ? <p className="mt-3 text-sm text-red-700">{saveError}</p> : null}
       </section>
@@ -367,112 +382,125 @@ export default function EntityDetailPage() {
 
       <section className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-lg font-semibold">Write a review</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This form submits as demo user #{DEMO_USER_ID} until auth is implemented.
-        </p>
-
-        <form onSubmit={handleReviewSubmit} className="mt-5 grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-medium">
-              Title
-              <input
-                value={reviewForm.title}
-                onChange={(event) =>
-                  setReviewForm((current) => ({ ...current, title: event.target.value }))
-                }
-                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-                placeholder="Optional short title"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Rating
-              <select
-                value={reviewForm.rating}
-                onChange={(event) =>
-                  setReviewForm((current) => ({ ...current, rating: event.target.value }))
-                }
-                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-              >
-                {["0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0", "4.5", "5.0"].map(
-                  (rating) => (
+        {isAuthLoading ? (
+          <p className="mt-2 text-sm text-muted-foreground">Checking session...</p>
+        ) : canUseUserActions ? (
+          <form onSubmit={handleReviewSubmit} className="mt-5 grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-medium">
+                Title
+                <input
+                  value={reviewForm.title}
+                  onChange={(event) =>
+                    setReviewForm((current) => ({ ...current, title: event.target.value }))
+                  }
+                  className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                  placeholder="Optional short title"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Rating
+                <select
+                  value={reviewForm.rating}
+                  onChange={(event) =>
+                    setReviewForm((current) => ({ ...current, rating: event.target.value }))
+                  }
+                  className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                >
+                  {[
+                    "0.5",
+                    "1.0",
+                    "1.5",
+                    "2.0",
+                    "2.5",
+                    "3.0",
+                    "3.5",
+                    "4.0",
+                    "4.5",
+                    "5.0",
+                  ].map((rating) => (
                     <option key={rating} value={rating}>
                       {rating}
                     </option>
-                  ),
-                )}
-              </select>
-            </label>
-          </div>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-          <label className="grid gap-2 text-sm font-medium">
-            Body
-            <textarea
-              value={reviewForm.body}
-              onChange={(event) =>
-                setReviewForm((current) => ({ ...current, body: event.target.value }))
-              }
-              className="min-h-32 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="Share your thoughts"
-              required
-            />
-          </label>
-
-          <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm font-medium">
-              Visibility
-              <select
-                value={reviewForm.visibility}
+              Body
+              <textarea
+                value={reviewForm.body}
                 onChange={(event) =>
-                  setReviewForm((current) => ({
-                    ...current,
-                    visibility: event.target.value as ReviewVisibility,
-                  }))
+                  setReviewForm((current) => ({ ...current, body: event.target.value }))
                 }
-                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-              >
-                <option value="public">Public</option>
-                <option value="followers">Followers</option>
-                <option value="private">Private</option>
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Tags
-              <input
-                value={reviewForm.tags}
-                onChange={(event) =>
-                  setReviewForm((current) => ({ ...current, tags: event.target.value }))
-                }
-                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
-                placeholder="anime, rewatchable"
+                className="min-h-32 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                placeholder="Share your thoughts"
+                required
               />
             </label>
-          </div>
 
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              type="checkbox"
-              checked={reviewForm.spoiler}
-              onChange={(event) =>
-                setReviewForm((current) => ({ ...current, spoiler: event.target.checked }))
-              }
-              className="h-4 w-4"
-            />
-            Contains spoilers
-          </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-medium">
+                Visibility
+                <select
+                  value={reviewForm.visibility}
+                  onChange={(event) =>
+                    setReviewForm((current) => ({
+                      ...current,
+                      visibility: event.target.value as ReviewVisibility,
+                    }))
+                  }
+                  className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                >
+                  <option value="public">Public</option>
+                  <option value="followers">Followers</option>
+                  <option value="private">Private</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Tags
+                <input
+                  value={reviewForm.tags}
+                  onChange={(event) =>
+                    setReviewForm((current) => ({ ...current, tags: event.target.value }))
+                  }
+                  className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                  placeholder="anime, rewatchable"
+                />
+              </label>
+            </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isSubmittingReview}
-              className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isSubmittingReview ? "Submitting..." : "Submit review"}
-            </button>
-          </div>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={reviewForm.spoiler}
+                onChange={(event) =>
+                  setReviewForm((current) => ({ ...current, spoiler: event.target.checked }))
+                }
+                className="h-4 w-4"
+              />
+              Contains spoilers
+            </label>
 
-          {reviewMessage ? <p className="text-sm text-green-700">{reviewMessage}</p> : null}
-          {reviewError ? <p className="text-sm text-red-700">{reviewError}</p> : null}
-        </form>
+            <div>
+              <button
+                type="submit"
+                disabled={isSubmittingReview}
+                className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmittingReview ? "Submitting..." : "Submit review"}
+              </button>
+            </div>
+
+            {reviewMessage ? <p className="text-sm text-green-700">{reviewMessage}</p> : null}
+            {reviewError ? <p className="text-sm text-red-700">{reviewError}</p> : null}
+          </form>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Log in to review or save this entity.
+          </p>
+        )}
       </section>
     </div>
   );

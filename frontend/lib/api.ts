@@ -4,6 +4,7 @@ import type {
   CollectionItem,
   CollectionListItem,
 } from "@/types/collection";
+import type { LoginPayload, SignupPayload, TokenResponse, User } from "@/types/auth";
 import type {
   Entity,
   EntityCredit,
@@ -22,12 +23,42 @@ import type {
 } from "@/types/review";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const AUTH_TOKEN_STORAGE_KEY = "vibeverse_access_token";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+export function getStoredAuthToken(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  }
+}
+
+export function clearAuthToken(): void {
+  delete apiClient.defaults.headers.common.Authorization;
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  }
+}
+
+apiClient.interceptors.request.use((config) => {
+  const token = getStoredAuthToken();
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export function getErrorMessage(error: unknown): string {
@@ -48,6 +79,26 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong.";
+}
+
+export async function signup(payload: SignupPayload): Promise<User> {
+  const response = await apiClient.post<User>("/auth/signup", payload);
+  return response.data;
+}
+
+export async function login(payload: LoginPayload): Promise<TokenResponse> {
+  const response = await apiClient.post<TokenResponse>("/auth/login", payload);
+  return response.data;
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const response = await apiClient.get<User>("/auth/me");
+  return response.data;
+}
+
+export async function logout(): Promise<{ message: string }> {
+  const response = await apiClient.post<{ message: string }>("/auth/logout");
+  return response.data;
 }
 
 export async function getEntities(params?: {

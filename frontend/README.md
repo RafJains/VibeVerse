@@ -7,17 +7,17 @@ Current scope:
 - App Router setup.
 - Tailwind CSS styling.
 - Entity browsing pages connected to the FastAPI backend.
-- Placeholder routes for future feed, communities, collections, profile, and admin phases.
+- Frontend signup, login, logout, and current-user session state.
+- Review and save actions use the logged-in user.
+- Placeholder routes for future feed, communities, full collections, and admin phases.
 
 Not included yet:
 
-- Auth
-- Reviews
-- Collection logic
 - Community logic
 - Feed logic
 - External API ingestion
 - Recommendations or ML
+- OAuth, refresh tokens, email verification, or password reset UI
 
 ## Setup
 
@@ -65,6 +65,18 @@ GET /entities/{id}/media
 GET /entities/{id}/credits
 GET /entities/{id}/related
 ```
+
+Auth uses:
+
+```text
+POST /auth/signup
+POST /auth/login
+GET /auth/me
+POST /auth/logout
+```
+
+The frontend stores the JWT access token in `localStorage` for now and sends it
+as a Bearer token through the centralized API client.
 
 ## Checks
 
