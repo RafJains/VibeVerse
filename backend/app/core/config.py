@@ -24,6 +24,10 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://vibeverse_user:vibeverse_password"
         "@localhost:5432/vibeverse_db"
     )
+    # Change SECRET_KEY in production. This local default is for development only.
+    secret_key: str = "dev-only-change-this-secret-key"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
     backend_cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",

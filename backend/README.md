@@ -8,7 +8,8 @@ Current scope:
 - Phase 2 core entity backend foundation.
 - Phase 4A backend reviews and ratings foundation.
 - Phase 4B backend collections foundation.
-- No auth, communities, feed, ingestion API calls, recommendations, ML, or frontend collection UI yet.
+- Phase 5A backend auth foundation.
+- No frontend auth UI, communities, feed, ingestion API calls, recommendations, or ML yet.
 
 ## Setup
 
@@ -21,6 +22,7 @@ copy .env.example .env
 ```
 
 Update `.env` if your PostgreSQL connection is different from the local default.
+Set a strong `SECRET_KEY` before production deployment. The example value is for local development only.
 
 ## Run Backend
 
@@ -70,6 +72,12 @@ The collection system is included in migration `0003_create_collection_tables.py
 alembic upgrade head
 ```
 
+The auth user fields are included in migration `0004_add_auth_fields_to_users.py`. Apply it with the same command:
+
+```powershell
+alembic upgrade head
+```
+
 ## Seed Data
 
 After PostgreSQL is running and migrations are applied:
@@ -81,6 +89,46 @@ python -m app.db.seed
 The seed script inserts sample Film, Series, Song, Album, and Person entities.
 It also inserts demo users and sample reviews when review tables are migrated.
 It also inserts sample watchlist, favourites, and custom collections when collection tables are migrated.
+
+Seeded auth credentials:
+
+- `demo_user` / `demo12345`
+- `critic_user` / `critic12345`
+
+## Auth API Examples
+
+Create a user:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/auth/signup" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"email":"newuser@vibeverse.dev","username":"new_user","password":"newuser123"}'
+```
+
+Login with username or email:
+
+```powershell
+$login = Invoke-RestMethod "http://127.0.0.1:8000/auth/login" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"email_or_username":"demo_user","password":"demo12345"}'
+
+$token = $login.access_token
+```
+
+Get the current user:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/auth/me" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Logout placeholder:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/auth/logout" -Method Post
+```
 
 ## Entity API Examples
 
@@ -121,7 +169,7 @@ Admin routes are intentionally unprotected for now. Authentication and authoriza
 
 ## Review API Examples
 
-Auth is not implemented yet, so review write requests accept `user_id` directly.
+Frontend auth UI is not implemented yet, so review write requests still accept `user_id` directly.
 
 List reviews for an entity:
 
@@ -170,7 +218,7 @@ Invoke-RestMethod "http://127.0.0.1:8000/reviews/1/report" `
 
 ## Collection API Examples
 
-Auth is not implemented yet, so collection requests accept `user_id` directly.
+Frontend auth UI is not implemented yet, so collection requests still accept `user_id` directly.
 
 List collections for a user:
 

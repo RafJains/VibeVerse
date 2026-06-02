@@ -1,3 +1,4 @@
+from app.schemas.auth import CurrentUserRead, LoginRequest, Token, TokenPayload, UserCreate, UserRead
 from app.schemas.collection import (
     CollectionCreate,
     CollectionItemCreate,
@@ -30,6 +31,7 @@ from app.schemas.review import (
 )
 
 __all__ = [
+    "CurrentUserRead",
     "CollectionCreate",
     "CollectionItemCreate",
     "CollectionItemRead",
@@ -46,6 +48,7 @@ __all__ = [
     "EntityTagRead",
     "EntityUpdate",
     "ExternalIdRead",
+    "LoginRequest",
     "EntityRatingSummary",
     "ReviewCreate",
     "ReviewListItem",
@@ -54,4 +57,8 @@ __all__ = [
     "ReviewReportRead",
     "ReviewTagRead",
     "ReviewUpdate",
+    "Token",
+    "TokenPayload",
+    "UserCreate",
+    "UserRead",
 ]

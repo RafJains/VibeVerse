@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
+from app.core.security import hash_password, verify_password
 from app.models.collection import Collection, CollectionItem
 from app.models.entity import (
     Entity,
@@ -14,7 +15,16 @@ from app.models.entity import (
     EntityType,
 )
 from app.models.review import Review, ReviewTag
-from app.models.user import User
+from app.models.user import Profile, User
+
+
+def password_matches(password: str, hashed_password: str | None) -> bool:
+    if not hashed_password:
+        return False
+    try:
+        return verify_password(password, hashed_password)
+    except (TypeError, ValueError):
+        return False
 
 
 def get_or_create_user(
@@ -22,15 +32,41 @@ def get_or_create_user(
     *,
     email: str,
     username: str,
+    password: str,
     role: str = "normal_user",
 ) -> User:
     user = db.query(User).filter(User.username == username).one_or_none()
     if user is not None:
+        user.email = email
+        user.role = role
+        user.is_active = True
+        if not password_matches(password, user.hashed_password):
+            user.hashed_password = hash_password(password)
+        if user.profile is None:
+            db.add(Profile(user_id=user.id, display_name=user.username))
         return user
 
-    user = User(email=email, username=username, role=role, is_active=True)
+    user = db.query(User).filter(User.email == email).one_or_none()
+    if user is not None:
+        user.username = username
+        user.role = role
+        user.is_active = True
+        if not password_matches(password, user.hashed_password):
+            user.hashed_password = hash_password(password)
+        if user.profile is None:
+            db.add(Profile(user_id=user.id, display_name=user.username))
+        return user
+
+    user = User(
+        email=email,
+        username=username,
+        hashed_password=hash_password(password),
+        role=role,
+        is_active=True,
+    )
     db.add(user)
     db.flush()
+    db.add(Profile(user_id=user.id, display_name=user.username))
     return user
 
 
@@ -273,13 +309,15 @@ def seed_entities() -> None:
     try:
         demo_user = get_or_create_user(
             db,
-            email="demo_user@vibeverse.local",
+            email="demo@vibeverse.local",
             username="demo_user",
+            password="demo12345",
         )
         critic_user = get_or_create_user(
             db,
-            email="critic_user@vibeverse.local",
+            email="critic@vibeverse.local",
             username="critic_user",
+            password="critic12345",
         )
 
         inception = get_or_create_entity(
