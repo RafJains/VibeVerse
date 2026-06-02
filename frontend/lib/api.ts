@@ -28,6 +28,14 @@ import type {
 } from "@/types/entity";
 import type { FeedCard, FeedCardListItem, TrendingScore } from "@/types/feed";
 import type {
+  IngestionJob,
+  IngestionResult,
+  TMDbIngestionRequest,
+  TMDbSearchRequest,
+  TMDbSearchResponse,
+  YouTubeIngestionRequest,
+} from "@/types/ingestion";
+import type {
   EntityRatingSummary,
   Review,
   ReviewCreatePayload,
@@ -192,6 +200,46 @@ export async function getTrendingScores(params?: {
       ...params,
       score_type: params?.score_type?.trim() || undefined,
     },
+  });
+  return response.data;
+}
+
+export async function searchTMDb(
+  payload: TMDbSearchRequest,
+): Promise<TMDbSearchResponse> {
+  const response = await apiClient.post<TMDbSearchResponse>(
+    "/admin/ingestion/tmdb/search",
+    payload,
+  );
+  return response.data;
+}
+
+export async function ingestTMDb(
+  payload: TMDbIngestionRequest,
+): Promise<IngestionResult> {
+  const response = await apiClient.post<IngestionResult>(
+    "/admin/ingestion/tmdb",
+    payload,
+  );
+  return response.data;
+}
+
+export async function ingestYouTube(
+  payload: YouTubeIngestionRequest,
+): Promise<IngestionResult> {
+  const response = await apiClient.post<IngestionResult>(
+    "/admin/ingestion/youtube",
+    payload,
+  );
+  return response.data;
+}
+
+export async function getIngestionJobs(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<IngestionJob[]> {
+  const response = await apiClient.get<IngestionJob[]>("/admin/ingestion/jobs", {
+    params,
   });
   return response.data;
 }
