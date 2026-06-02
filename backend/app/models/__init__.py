@@ -1,4 +1,11 @@
 from app.models.collection import Collection, CollectionItem
+from app.models.community import (
+    Community,
+    CommunityMember,
+    CommunityMergeRequest,
+    CommunityReport,
+    CommunityRule,
+)
 from app.models.entity import (
     Entity,
     EntityAlias,
@@ -18,6 +25,11 @@ from app.models.user import Profile, User
 __all__ = [
     "Collection",
     "CollectionItem",
+    "Community",
+    "CommunityMember",
+    "CommunityMergeRequest",
+    "CommunityReport",
+    "CommunityRule",
     "Entity",
     "EntityAlias",
     "EntityCredit",

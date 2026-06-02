@@ -47,6 +47,18 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    owned_communities: Mapped[list["Community"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
+    community_memberships: Mapped[list["CommunityMember"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    community_reports: Mapped[list["CommunityReport"]] = relationship(back_populates="reporter")
+    community_merge_requests: Mapped[list["CommunityMergeRequest"]] = relationship(
+        back_populates="requested_by",
+    )
 
 
 class Profile(Base):

@@ -10,7 +10,8 @@ Current scope:
 - Phase 4B backend collections foundation.
 - Phase 5A backend auth foundation.
 - Phase 5C auth-protected user write actions.
-- No communities, feed, ingestion API calls, recommendations, or ML yet.
+- Phase 6A backend communities core.
+- No frontend community UI, community posts, feed, ingestion API calls, recommendations, or ML yet.
 
 ## Setup
 
@@ -79,6 +80,12 @@ The auth user fields are included in migration `0004_add_auth_fields_to_users.py
 alembic upgrade head
 ```
 
+The community core is included in migration `0005_create_community_tables.py`. Apply it with:
+
+```powershell
+alembic upgrade head
+```
+
 ## Seed Data
 
 After PostgreSQL is running and migrations are applied:
@@ -90,11 +97,18 @@ python -m app.db.seed
 The seed script inserts sample Film, Series, Song, Album, and Person entities.
 It also inserts demo users and sample reviews when review tables are migrated.
 It also inserts sample watchlist, favourites, and custom collections when collection tables are migrated.
+It also inserts sample communities when community tables are migrated.
 
 Seeded auth credentials:
 
 - `demo_user` / `demo12345`
 - `critic_user` / `critic12345`
+
+Sample seeded communities:
+
+- `Inception Fans`
+- `Demon Slayer Corps`
+- `Weeknd Listeners`
 
 ## Auth API Examples
 
@@ -294,3 +308,70 @@ Temporary dev compatibility routes still exist while the frontend migrates fully
 - `DELETE /users/{user_id}/watchlist/{entity_id}`
 - `POST /users/{user_id}/favourites/{entity_id}`
 - `DELETE /users/{user_id}/favourites/{entity_id}`
+
+## Community API Examples
+
+Community posts are not implemented yet. User posts will exist inside communities
+in a later phase. The global feed remains curated and is not user-post-driven.
+
+List communities:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities"
+```
+
+List communities linked to an entity:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/entities/1/communities"
+```
+
+Get a community by id:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1"
+```
+
+Get a community by slug:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/slug/inception-fans"
+```
+
+Create a fan community:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"name":"Synth Pop Fans","description":"Discussion for synth-pop releases.","community_type":"fan","entity_id":4}'
+```
+
+Join a community:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1/join" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Add a community rule as owner, moderator, or admin:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1/rules" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"title":"Keep discussion on-topic","description":"Posts should relate to the linked entertainment entity.","order_index":1}'
+```
+
+Report a community:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1/report" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"reason":"duplicate","details":"This may duplicate another community."}'
+```

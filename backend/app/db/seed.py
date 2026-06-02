@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.core.security import hash_password, verify_password
 from app.models.collection import Collection, CollectionItem
+from app.models.community import Community, CommunityMember, CommunityRule
 from app.models.entity import (
     Entity,
     EntityCredit,
@@ -304,6 +305,108 @@ def add_collection_item_if_missing(
     return item
 
 
+def get_or_create_community(
+    db: Session,
+    *,
+    name: str,
+    slug: str,
+    community_type: str,
+    owner: User,
+    entity: Entity | None = None,
+    description: str | None = None,
+) -> Community:
+    community = db.query(Community).filter(Community.slug == slug).one_or_none()
+    if community is not None:
+        community.name = name
+        community.community_type = community_type
+        community.owner_user_id = owner.id
+        community.entity_id = entity.id if entity is not None else None
+        community.description = description
+        community.status = "approved"
+        return community
+
+    community = Community(
+        name=name,
+        slug=slug,
+        community_type=community_type,
+        owner_user_id=owner.id,
+        entity_id=entity.id if entity is not None else None,
+        description=description,
+        status="approved",
+        member_count=0,
+    )
+    db.add(community)
+    db.flush()
+    return community
+
+
+def add_community_member_if_missing(
+    db: Session,
+    *,
+    community: Community,
+    user: User,
+    role: str = "member",
+    status: str = "active",
+) -> CommunityMember:
+    member = (
+        db.query(CommunityMember)
+        .filter(
+            CommunityMember.community_id == community.id,
+            CommunityMember.user_id == user.id,
+        )
+        .one_or_none()
+    )
+    if member is not None:
+        member.role = role
+        member.status = status
+        return member
+
+    member = CommunityMember(
+        community_id=community.id,
+        user_id=user.id,
+        role=role,
+        status=status,
+    )
+    db.add(member)
+    db.flush()
+    return member
+
+
+def add_community_rule_if_missing(
+    db: Session,
+    *,
+    community: Community,
+    title: str,
+    description: str | None = None,
+    order_index: int = 0,
+) -> None:
+    exists = (
+        db.query(CommunityRule)
+        .filter(CommunityRule.community_id == community.id, CommunityRule.title == title)
+        .one_or_none()
+    )
+    if exists is None:
+        db.add(
+            CommunityRule(
+                community_id=community.id,
+                title=title,
+                description=description,
+                order_index=order_index,
+            )
+        )
+
+
+def sync_community_member_count(db: Session, community: Community) -> None:
+    community.member_count = (
+        db.query(CommunityMember)
+        .filter(
+            CommunityMember.community_id == community.id,
+            CommunityMember.status == "active",
+        )
+        .count()
+    )
+
+
 def seed_entities() -> None:
     db = SessionLocal()
     try:
@@ -318,6 +421,7 @@ def seed_entities() -> None:
             email="critic@vibeverse.local",
             username="critic_user",
             password="critic12345",
+            role="verified_user",
         )
 
         inception = get_or_create_entity(
@@ -464,6 +568,82 @@ def seed_entities() -> None:
             note="A strong fit for high-concept film discovery.",
             order_index=1,
         )
+
+        inception_fans = get_or_create_community(
+            db,
+            name="Inception Fans",
+            slug="inception-fans",
+            community_type="fan",
+            owner=demo_user,
+            entity=inception,
+            description="A fan community for theories and discussion around Inception.",
+        )
+        demon_slayer_corps = get_or_create_community(
+            db,
+            name="Demon Slayer Corps",
+            slug="demon-slayer-corps",
+            community_type="fan",
+            owner=critic_user,
+            entity=demon_slayer,
+            description="A fan community for Demon Slayer arcs, characters, and animation.",
+        )
+        weeknd_listeners = get_or_create_community(
+            db,
+            name="Weeknd Listeners",
+            slug="weeknd-listeners",
+            community_type="fan",
+            owner=critic_user,
+            entity=after_hours,
+            description="A listener community for The Weeknd tracks, albums, and eras.",
+        )
+
+        add_community_member_if_missing(db, community=inception_fans, user=demo_user, role="owner")
+        add_community_member_if_missing(
+            db,
+            community=inception_fans,
+            user=critic_user,
+            role="moderator",
+        )
+        add_community_member_if_missing(
+            db,
+            community=demon_slayer_corps,
+            user=critic_user,
+            role="owner",
+        )
+        add_community_member_if_missing(
+            db,
+            community=demon_slayer_corps,
+            user=demo_user,
+            role="member",
+        )
+        add_community_member_if_missing(db, community=weeknd_listeners, user=critic_user, role="owner")
+        add_community_member_if_missing(db, community=weeknd_listeners, user=demo_user, role="member")
+
+        add_community_rule_if_missing(
+            db,
+            community=inception_fans,
+            title="Mark major spoilers",
+            description="Use spoiler warnings for theory posts and ending discussion.",
+            order_index=1,
+        )
+        add_community_rule_if_missing(
+            db,
+            community=demon_slayer_corps,
+            title="Respect episode spoilers",
+            description="Keep newer episode and manga spoilers clearly marked.",
+            order_index=1,
+        )
+        add_community_rule_if_missing(
+            db,
+            community=weeknd_listeners,
+            title="Keep release discussions civil",
+            description="Discuss albums, tracks, and eras without personal attacks.",
+            order_index=1,
+        )
+
+        sync_community_member_count(db, inception_fans)
+        sync_community_member_count(db, demon_slayer_corps)
+        sync_community_member_count(db, weeknd_listeners)
 
         db.commit()
         print("Seed data inserted successfully.")
