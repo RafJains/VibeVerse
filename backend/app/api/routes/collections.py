@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.collection import (
     CollectionCreate,
     CollectionItemCreate,
@@ -11,6 +12,7 @@ from app.schemas.collection import (
     CollectionRead,
     CollectionUpdate,
 )
+from app.services.auth_service import get_current_user
 from app.services import collection_service
 
 
@@ -22,6 +24,7 @@ def create_collection(payload: CollectionCreate, db: Session = Depends(get_db)) 
     return collection_service.create_collection(db=db, payload=payload)
 
 
+# Temporary dev compatibility route. Prefer /me/collections.
 @router.get("/collections/user/{user_id}", response_model=list[CollectionListItem])
 def list_collections_for_user(
     user_id: int,
@@ -32,6 +35,21 @@ def list_collections_for_user(
     return collection_service.list_collections_for_user(
         db=db,
         user_id=user_id,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/me/collections", response_model=list[CollectionListItem])
+def list_my_collections(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[CollectionListItem]:
+    return collection_service.list_collections_for_user(
+        db=db,
+        user_id=current_user.id,
         limit=limit,
         offset=offset,
     )
@@ -113,75 +131,117 @@ def remove_entity_from_collection(
     )
 
 
+@router.post("/me/watchlist/{entity_id}", response_model=CollectionItemRead)
+def save_my_watchlist(
+    entity_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CollectionItemRead:
+    return collection_service.save_entity_to_default_collection(
+        db=db,
+        user_id=current_user.id,
+        entity_id=entity_id,
+        collection_type="watchlist",
+    )
+
+
+@router.delete("/me/watchlist/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_my_watchlist(
+    entity_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    collection_service.remove_entity_from_default_collection(
+        db=db,
+        user_id=current_user.id,
+        entity_id=entity_id,
+        collection_type="watchlist",
+    )
+
+
+@router.post("/me/favourites/{entity_id}", response_model=CollectionItemRead)
+def save_my_favourites(
+    entity_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CollectionItemRead:
+    return collection_service.save_entity_to_default_collection(
+        db=db,
+        user_id=current_user.id,
+        entity_id=entity_id,
+        collection_type="favourites",
+    )
+
+
+@router.delete("/me/favourites/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_my_favourites(
+    entity_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    collection_service.remove_entity_from_default_collection(
+        db=db,
+        user_id=current_user.id,
+        entity_id=entity_id,
+        collection_type="favourites",
+    )
+
+
+# Temporary dev compatibility route. Prefer /me/watchlist/{entity_id}.
 @router.post("/users/{user_id}/watchlist/{entity_id}", response_model=CollectionItemRead)
 def save_to_watchlist(
     user_id: int,
     entity_id: int,
     db: Session = Depends(get_db),
 ) -> CollectionItemRead:
-    collection = collection_service.get_or_create_default_collection(
+    return collection_service.save_entity_to_default_collection(
         db=db,
         user_id=user_id,
+        entity_id=entity_id,
         collection_type="watchlist",
     )
-    return collection_service.add_entity_to_collection(
-        db=db,
-        collection_id=collection.id,
-        payload=CollectionItemCreate(entity_id=entity_id),
-        allow_existing=True,
-    )
 
 
+# Temporary dev compatibility route. Prefer /me/watchlist/{entity_id}.
 @router.delete("/users/{user_id}/watchlist/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_from_watchlist(
     user_id: int,
     entity_id: int,
     db: Session = Depends(get_db),
 ) -> None:
-    collection = collection_service.get_or_create_default_collection(
+    collection_service.remove_entity_from_default_collection(
         db=db,
         user_id=user_id,
+        entity_id=entity_id,
         collection_type="watchlist",
     )
-    collection_service.remove_entity_from_collection(
-        db=db,
-        collection_id=collection.id,
-        entity_id=entity_id,
-    )
 
 
+# Temporary dev compatibility route. Prefer /me/favourites/{entity_id}.
 @router.post("/users/{user_id}/favourites/{entity_id}", response_model=CollectionItemRead)
 def save_to_favourites(
     user_id: int,
     entity_id: int,
     db: Session = Depends(get_db),
 ) -> CollectionItemRead:
-    collection = collection_service.get_or_create_default_collection(
+    return collection_service.save_entity_to_default_collection(
         db=db,
         user_id=user_id,
+        entity_id=entity_id,
         collection_type="favourites",
     )
-    return collection_service.add_entity_to_collection(
-        db=db,
-        collection_id=collection.id,
-        payload=CollectionItemCreate(entity_id=entity_id),
-        allow_existing=True,
-    )
 
 
+# Temporary dev compatibility route. Prefer /me/favourites/{entity_id}.
 @router.delete("/users/{user_id}/favourites/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_from_favourites(
     user_id: int,
     entity_id: int,
     db: Session = Depends(get_db),
 ) -> None:
-    collection = collection_service.get_or_create_default_collection(
+    collection_service.remove_entity_from_default_collection(
         db=db,
         user_id=user_id,
-        collection_type="favourites",
-    )
-    collection_service.remove_entity_from_collection(
-        db=db,
-        collection_id=collection.id,
         entity_id=entity_id,
+        collection_type="favourites",
     )

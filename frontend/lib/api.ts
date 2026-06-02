@@ -161,24 +161,25 @@ export async function getUserCollections(userId: number): Promise<CollectionList
   return response.data;
 }
 
-export async function addToWatchlist(userId: number, entityId: number): Promise<CollectionItem> {
-  const response = await apiClient.post<CollectionItem>(
-    `/users/${userId}/watchlist/${entityId}`,
-  );
+export async function getMyCollections(): Promise<CollectionListItem[]> {
+  const response = await apiClient.get<CollectionListItem[]>("/me/collections");
   return response.data;
 }
 
-export async function removeFromWatchlist(userId: number, entityId: number): Promise<void> {
-  await apiClient.delete(`/users/${userId}/watchlist/${entityId}`);
-}
-
-export async function addToFavourites(userId: number, entityId: number): Promise<CollectionItem> {
-  const response = await apiClient.post<CollectionItem>(
-    `/users/${userId}/favourites/${entityId}`,
-  );
+export async function addToWatchlist(entityId: number): Promise<CollectionItem> {
+  const response = await apiClient.post<CollectionItem>(`/me/watchlist/${entityId}`);
   return response.data;
 }
 
-export async function removeFromFavourites(userId: number, entityId: number): Promise<void> {
-  await apiClient.delete(`/users/${userId}/favourites/${entityId}`);
+export async function removeFromWatchlist(entityId: number): Promise<void> {
+  await apiClient.delete(`/me/watchlist/${entityId}`);
+}
+
+export async function addToFavourites(entityId: number): Promise<CollectionItem> {
+  const response = await apiClient.post<CollectionItem>(`/me/favourites/${entityId}`);
+  return response.data;
+}
+
+export async function removeFromFavourites(entityId: number): Promise<void> {
+  await apiClient.delete(`/me/favourites/${entityId}`);
 }

@@ -137,7 +137,6 @@ export default function EntityDetailPage() {
     try {
       await createReview({
         entity_id: data.entity.id,
-        user_id: user.id,
         rating: Number(reviewForm.rating),
         title: reviewForm.title.trim() || null,
         body,
@@ -175,10 +174,10 @@ export default function EntityDetailPage() {
 
     try {
       if (target === "watchlist") {
-        await addToWatchlist(user.id, data.entity.id);
+        await addToWatchlist(data.entity.id);
         setSaveMessage("Saved to watchlist.");
       } else {
-        await addToFavourites(user.id, data.entity.id);
+        await addToFavourites(data.entity.id);
         setSaveMessage("Saved to favourites.");
       }
     } catch (saveFailure) {

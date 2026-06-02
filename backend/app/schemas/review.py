@@ -25,7 +25,6 @@ class ReviewTagRead(BaseModel):
 
 class ReviewCreate(BaseModel):
     entity_id: int
-    user_id: int
     rating: float = Field(..., ge=0.5, le=5.0)
     title: str | None = Field(default=None, max_length=160)
     body: str = Field(..., min_length=1)
@@ -79,7 +78,6 @@ class ReviewRead(ReviewListItem):
 
 
 class ReviewReportCreate(BaseModel):
-    reporter_user_id: int
     reason: str = Field(..., min_length=1, max_length=120)
     details: str | None = None
 

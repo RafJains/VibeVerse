@@ -9,6 +9,9 @@ from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewReportCreate, ReviewUpdate
 
 
+ADMIN_ROLES = {"admin", "super_admin"}
+
+
 def _clean_tags(tags: list[str]) -> list[str]:
     cleaned: list[str] = []
     seen: set[str] = set()
@@ -42,13 +45,25 @@ def _ensure_user_exists(db: Session, user_id: int) -> None:
         )
 
 
-def create_review(db: Session, payload: ReviewCreate) -> Review:
+def _can_manage_review(review: Review, user: User) -> bool:
+    return review.user_id == user.id or user.role in ADMIN_ROLES
+
+
+def _ensure_can_manage_review(review: Review, user: User) -> None:
+    if not _can_manage_review(review, user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to modify this review",
+        )
+
+
+def create_review(db: Session, payload: ReviewCreate, user_id: int) -> Review:
     _ensure_entity_exists(db, payload.entity_id)
-    _ensure_user_exists(db, payload.user_id)
+    _ensure_user_exists(db, user_id)
 
     existing_review = (
         db.query(Review)
-        .filter(Review.entity_id == payload.entity_id, Review.user_id == payload.user_id)
+        .filter(Review.entity_id == payload.entity_id, Review.user_id == user_id)
         .one_or_none()
     )
     if existing_review is not None:
@@ -59,7 +74,7 @@ def create_review(db: Session, payload: ReviewCreate) -> Review:
 
     data = payload.model_dump()
     tags = data.pop("tags", [])
-    review = Review(**data)
+    review = Review(**data, user_id=user_id)
 
     try:
         db.add(review)
@@ -120,8 +135,9 @@ def get_review_or_404(db: Session, review_id: int) -> Review:
     return review
 
 
-def update_review(db: Session, review_id: int, payload: ReviewUpdate) -> Review:
+def update_review(db: Session, review_id: int, payload: ReviewUpdate, current_user: User) -> Review:
     review = get_review_or_404(db, review_id)
+    _ensure_can_manage_review(review, current_user)
     data = payload.model_dump(exclude_unset=True)
     tags = data.pop("tags", None)
 
@@ -149,19 +165,20 @@ def update_review(db: Session, review_id: int, payload: ReviewUpdate) -> Review:
     return review
 
 
-def delete_review(db: Session, review_id: int) -> None:
+def delete_review(db: Session, review_id: int, current_user: User) -> None:
     review = get_review_or_404(db, review_id)
+    _ensure_can_manage_review(review, current_user)
     review.is_deleted = True
     db.commit()
 
 
-def report_review(db: Session, review_id: int, payload: ReviewReportCreate) -> ReviewReport:
+def report_review(db: Session, review_id: int, payload: ReviewReportCreate, reporter_user_id: int) -> ReviewReport:
     review = get_review_or_404(db, review_id)
-    _ensure_user_exists(db, payload.reporter_user_id)
+    _ensure_user_exists(db, reporter_user_id)
 
     report = ReviewReport(
         review_id=review.id,
-        reporter_user_id=payload.reporter_user_id,
+        reporter_user_id=reporter_user_id,
         reason=payload.reason,
         details=payload.details,
         status="pending",

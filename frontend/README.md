@@ -78,6 +78,9 @@ POST /auth/logout
 The frontend stores the JWT access token in `localStorage` for now and sends it
 as a Bearer token through the centralized API client.
 
+Review and save actions require a logged-in user. The frontend does not send
+`user_id` for those actions; the backend derives ownership from the Bearer token.
+
 ## Checks
 
 ```powershell

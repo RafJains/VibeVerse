@@ -9,7 +9,8 @@ Current scope:
 - Phase 4A backend reviews and ratings foundation.
 - Phase 4B backend collections foundation.
 - Phase 5A backend auth foundation.
-- No frontend auth UI, communities, feed, ingestion API calls, recommendations, or ML yet.
+- Phase 5C auth-protected user write actions.
+- No communities, feed, ingestion API calls, recommendations, or ML yet.
 
 ## Setup
 
@@ -169,8 +170,6 @@ Admin routes are intentionally unprotected for now. Authentication and authoriza
 
 ## Review API Examples
 
-Frontend auth UI is not implemented yet, so review write requests still accept `user_id` directly.
-
 List reviews for an entity:
 
 ```powershell
@@ -194,8 +193,9 @@ Create a review:
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/reviews" `
   -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
-  -Body '{"entity_id":1,"user_id":1,"rating":4.5,"title":"Strong watch","body":"A polished entertainment experience.","spoiler":false,"visibility":"public","tags":["sample"]}'
+  -Body '{"entity_id":1,"rating":4.5,"title":"Strong watch","body":"A polished entertainment experience.","spoiler":false,"visibility":"public","tags":["sample"]}'
 ```
 
 Update a review:
@@ -203,6 +203,7 @@ Update a review:
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/reviews/1" `
   -Method Patch `
+  -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
   -Body '{"rating":5.0,"body":"Updated review body.","tags":["updated"]}'
 ```
@@ -212,18 +213,27 @@ Report a review:
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/reviews/1/report" `
   -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
-  -Body '{"reporter_user_id":2,"reason":"spoiler","details":"This review may need a spoiler flag."}'
+  -Body '{"reason":"spoiler","details":"This review may need a spoiler flag."}'
 ```
 
-## Collection API Examples
+Review write routes require a Bearer token. The server derives `user_id` and
+`reporter_user_id` from the authenticated user instead of trusting request body IDs.
 
-Frontend auth UI is not implemented yet, so collection requests still accept `user_id` directly.
+## Collection API Examples
 
 List collections for a user:
 
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/collections/user/1"
+```
+
+The `/collections/user/{user_id}` route is temporary dev compatibility. Prefer:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/me/collections" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
 Get a collection:
@@ -265,11 +275,22 @@ Invoke-RestMethod "http://127.0.0.1:8000/collections/1/items/4" -Method Delete
 Save to watchlist:
 
 ```powershell
-Invoke-RestMethod "http://127.0.0.1:8000/users/1/watchlist/1" -Method Post
+Invoke-RestMethod "http://127.0.0.1:8000/me/watchlist/1" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
 Save to favourites:
 
 ```powershell
-Invoke-RestMethod "http://127.0.0.1:8000/users/1/favourites/3" -Method Post
+Invoke-RestMethod "http://127.0.0.1:8000/me/favourites/3" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
+
+Temporary dev compatibility routes still exist while the frontend migrates fully:
+
+- `POST /users/{user_id}/watchlist/{entity_id}`
+- `DELETE /users/{user_id}/watchlist/{entity_id}`
+- `POST /users/{user_id}/favourites/{entity_id}`
+- `DELETE /users/{user_id}/favourites/{entity_id}`

@@ -245,3 +245,40 @@ def get_or_create_default_collection(
     db.commit()
     db.refresh(collection)
     return collection
+
+
+def save_entity_to_default_collection(
+    db: Session,
+    user_id: int,
+    entity_id: int,
+    collection_type: str,
+) -> CollectionItem:
+    collection = get_or_create_default_collection(
+        db=db,
+        user_id=user_id,
+        collection_type=collection_type,
+    )
+    return add_entity_to_collection(
+        db=db,
+        collection_id=collection.id,
+        payload=CollectionItemCreate(entity_id=entity_id),
+        allow_existing=True,
+    )
+
+
+def remove_entity_from_default_collection(
+    db: Session,
+    user_id: int,
+    entity_id: int,
+    collection_type: str,
+) -> None:
+    collection = get_or_create_default_collection(
+        db=db,
+        user_id=user_id,
+        collection_type=collection_type,
+    )
+    remove_entity_from_collection(
+        db=db,
+        collection_id=collection.id,
+        entity_id=entity_id,
+    )

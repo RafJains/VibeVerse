@@ -35,7 +35,6 @@ export interface EntityRatingSummary {
 
 export interface ReviewCreatePayload {
   entity_id: number;
-  user_id: number;
   rating: number;
   title?: string | null;
   body: string;
@@ -46,7 +45,6 @@ export interface ReviewCreatePayload {
 }
 
 export interface ReviewReportCreatePayload {
-  reporter_user_id: number;
   reason: string;
   details?: string | null;
 }

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.models.user import User
 from app.schemas.review import (
     EntityRatingSummary,
     ReviewCreate,
@@ -11,6 +12,7 @@ from app.schemas.review import (
     ReviewReportRead,
     ReviewUpdate,
 )
+from app.services.auth_service import get_current_user
 from app.services import review_service
 
 
@@ -18,8 +20,12 @@ router = APIRouter(tags=["reviews"])
 
 
 @router.post("/reviews", response_model=ReviewRead, status_code=status.HTTP_201_CREATED)
-def create_review(payload: ReviewCreate, db: Session = Depends(get_db)) -> ReviewRead:
-    return review_service.create_review(db=db, payload=payload)
+def create_review(
+    payload: ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ReviewRead:
+    return review_service.create_review(db=db, payload=payload, user_id=current_user.id)
 
 
 @router.get("/reviews/entity/{entity_id}", response_model=list[ReviewListItem])
@@ -81,13 +87,23 @@ def update_review(
     review_id: int,
     payload: ReviewUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ReviewRead:
-    return review_service.update_review(db=db, review_id=review_id, payload=payload)
+    return review_service.update_review(
+        db=db,
+        review_id=review_id,
+        payload=payload,
+        current_user=current_user,
+    )
 
 
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_review(review_id: int, db: Session = Depends(get_db)) -> None:
-    review_service.delete_review(db=db, review_id=review_id)
+def delete_review(
+    review_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    review_service.delete_review(db=db, review_id=review_id, current_user=current_user)
 
 
 @router.post("/reviews/{review_id}/report", response_model=ReviewReportRead, status_code=status.HTTP_201_CREATED)
@@ -95,8 +111,14 @@ def report_review(
     review_id: int,
     payload: ReviewReportCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ReviewReportRead:
-    return review_service.report_review(db=db, review_id=review_id, payload=payload)
+    return review_service.report_review(
+        db=db,
+        review_id=review_id,
+        payload=payload,
+        reporter_user_id=current_user.id,
+    )
 
 
 @router.get("/entities/{entity_id}/rating-summary", response_model=EntityRatingSummary)
