@@ -70,6 +70,14 @@ class User(Base):
     community_blocked_words: Mapped[list["CommunityBlockedWord"]] = relationship(
         back_populates="created_by",
     )
+    created_feed_cards: Mapped[list["FeedCard"]] = relationship(
+        back_populates="creator",
+        foreign_keys="FeedCard.created_by_user_id",
+    )
+    approved_feed_cards: Mapped[list["FeedCard"]] = relationship(
+        back_populates="approver",
+        foreign_keys="FeedCard.approved_by_user_id",
+    )
 
 
 class Profile(Base):

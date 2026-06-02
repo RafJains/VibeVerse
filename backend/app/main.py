@@ -6,6 +6,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.collections import router as collections_router
 from app.api.routes.communities import router as communities_router
 from app.api.routes.entities import router as entities_router
+from app.api.routes.feed import router as feed_router
 from app.api.routes.health import router as health_router
 from app.api.routes.posts import router as posts_router
 from app.api.routes.reviews import router as reviews_router
@@ -30,6 +31,7 @@ app.include_router(reviews_router)
 app.include_router(collections_router)
 app.include_router(communities_router)
 app.include_router(posts_router)
+app.include_router(feed_router)
 
 
 @app.get("/")

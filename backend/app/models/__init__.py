@@ -19,6 +19,7 @@ from app.models.entity import (
     RawExternalPayload,
     UserEvent,
 )
+from app.models.feed import FeedCard, FeedCardEntity, FeedRegion, FeedSchedule, TrendingScore
 from app.models.review import Review, ReviewEditHistory, ReviewReport, ReviewTag
 from app.models.post import CommunityBlockedWord, CommunityPost, PostModerationAction, PostReport
 from app.models.user import Profile, User
@@ -41,6 +42,10 @@ __all__ = [
     "EntityTag",
     "EntityType",
     "ExternalId",
+    "FeedCard",
+    "FeedCardEntity",
+    "FeedRegion",
+    "FeedSchedule",
     "IngestionJob",
     "Profile",
     "PostModerationAction",
@@ -50,6 +55,7 @@ __all__ = [
     "ReviewEditHistory",
     "ReviewReport",
     "ReviewTag",
+    "TrendingScore",
     "User",
     "UserEvent",
 ]

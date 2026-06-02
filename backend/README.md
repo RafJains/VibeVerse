@@ -12,7 +12,8 @@ Current scope:
 - Phase 5C auth-protected user write actions.
 - Phase 6A backend communities core.
 - Phase 6C backend community posts core.
-- No frontend post UI, feed, ingestion API calls, recommendations, or ML yet.
+- Phase 7A curated global feed backend foundation.
+- No frontend feed UI, ingestion API calls, recommendations, or ML yet.
 
 ## Setup
 
@@ -93,6 +94,12 @@ The community posts core is included in migration `0006_create_community_post_ta
 alembic upgrade head
 ```
 
+The curated global feed core is included in migration `0007_create_feed_tables.py`. Apply it with:
+
+```powershell
+alembic upgrade head
+```
+
 ## Seed Data
 
 After PostgreSQL is running and migrations are applied:
@@ -106,11 +113,13 @@ It also inserts demo users and sample reviews when review tables are migrated.
 It also inserts sample watchlist, favourites, and custom collections when collection tables are migrated.
 It also inserts sample communities when community tables are migrated.
 It also inserts sample community posts when community post tables are migrated.
+It also inserts an admin user, sample curated global feed cards, and manual trending scores when feed tables are migrated.
 
 Seeded auth credentials:
 
 - `demo_user` / `demo12345`
 - `critic_user` / `critic12345`
+- `admin_user` / `admin12345`
 
 Sample seeded communities:
 
@@ -440,4 +449,73 @@ Invoke-RestMethod "http://127.0.0.1:8000/communities/1/blocked-words" `
   -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
   -Body '{"word":"blockedterm"}'
+```
+
+## Curated Global Feed API Examples
+
+Global feed is curated/admin-controlled. Community posts do not appear here.
+
+List public global feed cards:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/feed/global"
+```
+
+Filter public global feed cards by region:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/feed/global?region=global"
+```
+
+Get a public feed card:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/feed/cards/1"
+```
+
+List trending scores:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/feed/trending-scores"
+```
+
+Login as the seeded admin:
+
+```powershell
+$adminLogin = Invoke-RestMethod "http://127.0.0.1:8000/auth/login" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"email_or_username":"admin_user","password":"admin12345"}'
+
+$adminToken = $adminLogin.access_token
+```
+
+Create an admin feed card:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/feed-cards" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" `
+  -Body '{"title":"Curated spotlight","subtitle":"Admin controlled card","body":"This is not a community post.","card_type":"spotlight","linked_entity_ids":[1],"priority":10,"region":"global"}'
+```
+
+Approve and publish a feed card:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/feed-cards/1/approve" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" }
+
+Invoke-RestMethod "http://127.0.0.1:8000/admin/feed-cards/1/publish" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" }
+```
+
+Link an entity to a feed card:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/feed-cards/1/entities/2?order_index=1" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" }
 ```

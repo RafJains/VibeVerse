@@ -86,6 +86,8 @@ class Entity(Base):
     )
     collection_items: Mapped[list["CollectionItem"]] = relationship(back_populates="entity")
     communities: Mapped[list["Community"]] = relationship(back_populates="entity")
+    feed_card_links: Mapped[list["FeedCardEntity"]] = relationship(back_populates="entity")
+    trending_scores: Mapped[list["TrendingScore"]] = relationship(back_populates="entity")
 
 
 class EntityTag(Base):

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import sys
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -15,6 +16,7 @@ from app.models.entity import (
     EntityTag,
     EntityType,
 )
+from app.models.feed import FeedCard, FeedCardEntity, FeedRegion, TrendingScore
 from app.models.post import CommunityPost
 from app.models.review import Review, ReviewTag
 from app.models.user import Profile, User
@@ -452,6 +454,121 @@ def add_community_post_if_missing(
     return post
 
 
+def get_or_create_feed_region(db: Session, *, code: str, name: str) -> FeedRegion:
+    region = db.query(FeedRegion).filter(FeedRegion.code == code).one_or_none()
+    if region is not None:
+        region.name = name
+        return region
+
+    region = FeedRegion(code=code, name=name)
+    db.add(region)
+    db.flush()
+    return region
+
+
+def get_or_create_feed_card(
+    db: Session,
+    *,
+    title: str,
+    subtitle: str,
+    body: str,
+    card_type: str,
+    admin_user: User,
+    priority: int,
+    region: str | None = None,
+) -> FeedCard:
+    feed_card = db.query(FeedCard).filter(FeedCard.title == title).one_or_none()
+    approved_at = datetime.now(timezone.utc)
+    if feed_card is not None:
+        feed_card.subtitle = subtitle
+        feed_card.body = body
+        feed_card.card_type = card_type
+        feed_card.status = "published"
+        feed_card.source_type = "admin_created"
+        feed_card.priority = priority
+        feed_card.region = region
+        feed_card.created_by_user_id = admin_user.id
+        feed_card.approved_by_user_id = admin_user.id
+        feed_card.approved_at = feed_card.approved_at or approved_at
+        return feed_card
+
+    feed_card = FeedCard(
+        title=title,
+        subtitle=subtitle,
+        body=body,
+        card_type=card_type,
+        status="published",
+        source_type="admin_created",
+        priority=priority,
+        region=region,
+        created_by_user_id=admin_user.id,
+        approved_by_user_id=admin_user.id,
+        approved_at=approved_at,
+    )
+    db.add(feed_card)
+    db.flush()
+    return feed_card
+
+
+def add_feed_card_entity_if_missing(
+    db: Session,
+    *,
+    feed_card: FeedCard,
+    entity: Entity,
+    order_index: int = 0,
+) -> FeedCardEntity:
+    link = (
+        db.query(FeedCardEntity)
+        .filter(
+            FeedCardEntity.feed_card_id == feed_card.id,
+            FeedCardEntity.entity_id == entity.id,
+        )
+        .one_or_none()
+    )
+    if link is not None:
+        link.order_index = order_index
+        return link
+
+    link = FeedCardEntity(
+        feed_card_id=feed_card.id,
+        entity_id=entity.id,
+        order_index=order_index,
+    )
+    db.add(link)
+    db.flush()
+    return link
+
+
+def add_trending_score_if_missing(
+    db: Session,
+    *,
+    entity: Entity,
+    score: float,
+    score_type: str = "manual_seed",
+) -> TrendingScore:
+    trending_score = (
+        db.query(TrendingScore)
+        .filter(
+            TrendingScore.entity_id == entity.id,
+            TrendingScore.score_type == score_type,
+        )
+        .one_or_none()
+    )
+    if trending_score is not None:
+        trending_score.score = score
+        trending_score.calculated_at = datetime.now(timezone.utc)
+        return trending_score
+
+    trending_score = TrendingScore(
+        entity_id=entity.id,
+        score=score,
+        score_type=score_type,
+    )
+    db.add(trending_score)
+    db.flush()
+    return trending_score
+
+
 def seed_entities() -> None:
     db = SessionLocal()
     try:
@@ -467,6 +584,13 @@ def seed_entities() -> None:
             username="critic_user",
             password="critic12345",
             role="verified_user",
+        )
+        admin_user = get_or_create_user(
+            db,
+            email="admin@vibeverse.local",
+            username="admin_user",
+            password="admin12345",
+            role="admin",
         )
 
         inception = get_or_create_entity(
@@ -715,6 +839,47 @@ def seed_entities() -> None:
             title="After Hours still owns the night-drive mood",
             body="The synth palette and sequencing make the album feel more cohesive with every replay.",
         )
+
+        get_or_create_feed_region(db, code="global", name="Global")
+
+        trending_inception = get_or_create_feed_card(
+            db,
+            title="Trending now: Inception",
+            subtitle="A mind-bending film pick for the global audience.",
+            body="Curated spotlight for VibeVerse users exploring layered sci-fi films.",
+            card_type="trending_entity",
+            admin_user=admin_user,
+            priority=100,
+            region="global",
+        )
+        anime_spotlight = get_or_create_feed_card(
+            db,
+            title="Anime spotlight: Demon Slayer",
+            subtitle="High-energy action and emotional stakes.",
+            body="Curated anime spotlight linked to the Demon Slayer entity.",
+            card_type="spotlight",
+            admin_user=admin_user,
+            priority=90,
+            region="global",
+        )
+        music_spotlight = get_or_create_feed_card(
+            db,
+            title="Music spotlight: Blinding Lights",
+            subtitle="Synth-pop with lasting replay value.",
+            body="Curated music card for listeners exploring The Weeknd's After Hours era.",
+            card_type="spotlight",
+            admin_user=admin_user,
+            priority=80,
+            region="global",
+        )
+
+        add_feed_card_entity_if_missing(db, feed_card=trending_inception, entity=inception)
+        add_feed_card_entity_if_missing(db, feed_card=anime_spotlight, entity=demon_slayer)
+        add_feed_card_entity_if_missing(db, feed_card=music_spotlight, entity=blinding_lights)
+
+        add_trending_score_if_missing(db, entity=inception, score=98.0)
+        add_trending_score_if_missing(db, entity=demon_slayer, score=94.0)
+        add_trending_score_if_missing(db, entity=blinding_lights, score=92.0)
 
         db.commit()
         print("Seed data inserted successfully.")
