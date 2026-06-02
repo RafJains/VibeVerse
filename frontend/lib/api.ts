@@ -26,6 +26,7 @@ import type {
   EntityRelation,
   EntityType,
 } from "@/types/entity";
+import type { FeedCard, FeedCardListItem, TrendingScore } from "@/types/feed";
 import type {
   EntityRatingSummary,
   Review,
@@ -159,6 +160,39 @@ export async function getEntityCredits(id: number): Promise<EntityCredit[]> {
 
 export async function getEntityRelations(id: number): Promise<EntityRelation[]> {
   const response = await apiClient.get<EntityRelation[]>(`/entities/${id}/related`);
+  return response.data;
+}
+
+export async function getGlobalFeed(params?: {
+  region?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<FeedCardListItem[]> {
+  const response = await apiClient.get<FeedCardListItem[]>("/feed/global", {
+    params: {
+      ...params,
+      region: params?.region?.trim() || undefined,
+    },
+  });
+  return response.data;
+}
+
+export async function getFeedCard(id: number): Promise<FeedCard> {
+  const response = await apiClient.get<FeedCard>(`/feed/cards/${id}`);
+  return response.data;
+}
+
+export async function getTrendingScores(params?: {
+  score_type?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TrendingScore[]> {
+  const response = await apiClient.get<TrendingScore[]>("/feed/trending-scores", {
+    params: {
+      ...params,
+      score_type: params?.score_type?.trim() || undefined,
+    },
+  });
   return response.data;
 }
 
