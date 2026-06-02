@@ -33,6 +33,13 @@ from app.schemas.entity import (
     EntityUpdate,
     ExternalIdRead,
 )
+from app.schemas.ingestion import (
+    IngestionJobRead,
+    IngestionResult,
+    TMDbIngestionRequest,
+    TMDbSearchRequest,
+    YouTubeIngestionRequest,
+)
 from app.schemas.review import (
     EntityRatingSummary,
     ReviewCreate,
@@ -74,6 +81,8 @@ __all__ = [
     "EntityTagRead",
     "EntityUpdate",
     "ExternalIdRead",
+    "IngestionJobRead",
+    "IngestionResult",
     "LoginRequest",
     "EntityRatingSummary",
     "ReviewCreate",
@@ -83,8 +92,11 @@ __all__ = [
     "ReviewReportRead",
     "ReviewTagRead",
     "ReviewUpdate",
+    "TMDbIngestionRequest",
+    "TMDbSearchRequest",
     "Token",
     "TokenPayload",
     "UserCreate",
     "UserRead",
+    "YouTubeIngestionRequest",
 ]

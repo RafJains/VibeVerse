@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     secret_key: str = "dev-only-change-this-secret-key"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    tmdb_api_key: str | None = None
+    tmdb_base_url: str = "https://api.themoviedb.org/3"
+    youtube_api_key: str | None = None
+    youtube_base_url: str = "https://www.googleapis.com/youtube/v3"
     backend_cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",

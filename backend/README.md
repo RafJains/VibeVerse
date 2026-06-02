@@ -13,7 +13,8 @@ Current scope:
 - Phase 6A backend communities core.
 - Phase 6C backend community posts core.
 - Phase 7A curated global feed backend foundation.
-- No frontend feed UI, ingestion API calls, recommendations, or ML yet.
+- Phase 8A backend external API ingestion foundation.
+- No frontend ingestion UI, recommendations, or ML yet.
 
 ## Setup
 
@@ -27,6 +28,16 @@ copy .env.example .env
 
 Update `.env` if your PostgreSQL connection is different from the local default.
 Set a strong `SECRET_KEY` before production deployment. The example value is for local development only.
+TMDb and YouTube API keys are optional for local setup, but admin ingestion endpoints return a clear missing-key error when a required key is absent.
+
+External API keys:
+
+```env
+TMDB_API_KEY=
+TMDB_BASE_URL=https://api.themoviedb.org/3
+YOUTUBE_API_KEY=
+YOUTUBE_BASE_URL=https://www.googleapis.com/youtube/v3
+```
 
 ## Run Backend
 
@@ -99,6 +110,16 @@ The curated global feed core is included in migration `0007_create_feed_tables.p
 ```powershell
 alembic upgrade head
 ```
+
+Phase 8A ingestion uses existing tables from the core entity migration:
+
+- `external_ids`
+- `raw_external_payloads`
+- `ingestion_jobs`
+- `entity_media`
+- `entity_tags`
+
+No Alembic migration is required for Phase 8A.
 
 ## Seed Data
 
@@ -519,3 +540,77 @@ Invoke-RestMethod "http://127.0.0.1:8000/admin/feed-cards/1/entities/2?order_ind
   -Method Post `
   -Headers @{ Authorization = "Bearer $adminToken" }
 ```
+
+## External API Ingestion Examples
+
+External APIs must be called only from backend ingestion services. The frontend must not call TMDb or YouTube directly.
+
+Login as admin:
+
+```powershell
+$adminLogin = Invoke-RestMethod "http://127.0.0.1:8000/auth/login" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"email_or_username":"admin_user","password":"admin12345"}'
+
+$adminToken = $adminLogin.access_token
+```
+
+List ingestion jobs:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/ingestion/jobs" `
+  -Headers @{ Authorization = "Bearer $adminToken" }
+```
+
+Search TMDb and store the raw search payload:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/ingestion/tmdb/search" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" `
+  -Body '{"query":"Inception"}'
+```
+
+Ingest a TMDb movie into a VibeVerse Film entity:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/ingestion/tmdb" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" `
+  -Body '{"tmdb_id":27205,"tmdb_type":"movie","import_media":false}'
+```
+
+Ingest a TMDb TV series:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/ingestion/tmdb" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" `
+  -Body '{"tmdb_id":1399,"tmdb_type":"tv","import_media":false}'
+```
+
+Ingest a TMDb person:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/ingestion/tmdb" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" `
+  -Body '{"tmdb_id":525,"tmdb_type":"person","import_media":false}'
+```
+
+Ingest YouTube media for an existing entity:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/admin/ingestion/youtube" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $adminToken" } `
+  -ContentType "application/json" `
+  -Body '{"entity_id":1,"max_results":5}'
+```
+
+If `TMDB_API_KEY` or `YOUTUBE_API_KEY` is missing, the corresponding ingestion endpoint returns a clear `503` response instead of making an external request.
