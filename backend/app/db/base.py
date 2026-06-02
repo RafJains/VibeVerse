@@ -9,5 +9,6 @@ class Base(DeclarativeBase):
 import app.models.collection  # noqa: E402,F401
 import app.models.community  # noqa: E402,F401
 import app.models.entity  # noqa: E402,F401
+import app.models.post  # noqa: E402,F401
 import app.models.review  # noqa: E402,F401
 import app.models.user  # noqa: E402,F401

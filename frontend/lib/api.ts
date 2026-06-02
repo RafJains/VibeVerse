@@ -34,6 +34,17 @@ import type {
   ReviewReport,
   ReviewReportCreatePayload,
 } from "@/types/review";
+import type {
+  CommunityBlockedWord,
+  CommunityBlockedWordCreatePayload,
+  CommunityPost,
+  CommunityPostCreatePayload,
+  CommunityPostListItem,
+  CommunityPostUpdatePayload,
+  PostModerationAction,
+  PostReport as CommunityPostReport,
+  PostReportPayload,
+} from "@/types/post";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 const AUTH_TOKEN_STORAGE_KEY = "vibeverse_access_token";
@@ -92,6 +103,13 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong.";
+}
+
+export function getErrorStatus(error: unknown): number | null {
+  if (axios.isAxiosError(error)) {
+    return error.response?.status ?? null;
+  }
+  return null;
 }
 
 export async function signup(payload: SignupPayload): Promise<User> {
@@ -242,6 +260,101 @@ export async function createCommunityMergeRequest(
     payload,
   );
   return response.data;
+}
+
+export async function getCommunityPosts(
+  communityId: number,
+): Promise<CommunityPostListItem[]> {
+  const response = await apiClient.get<CommunityPostListItem[]>(
+    `/communities/${communityId}/posts`,
+  );
+  return response.data;
+}
+
+export async function getPost(postId: number): Promise<CommunityPost> {
+  const response = await apiClient.get<CommunityPost>(`/posts/${postId}`);
+  return response.data;
+}
+
+export async function createCommunityPost(
+  communityId: number,
+  payload: CommunityPostCreatePayload,
+): Promise<CommunityPost> {
+  const response = await apiClient.post<CommunityPost>(
+    `/communities/${communityId}/posts`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function updatePost(
+  postId: number,
+  payload: CommunityPostUpdatePayload,
+): Promise<CommunityPost> {
+  const response = await apiClient.patch<CommunityPost>(`/posts/${postId}`, payload);
+  return response.data;
+}
+
+export async function deletePost(postId: number): Promise<void> {
+  await apiClient.delete(`/posts/${postId}`);
+}
+
+export async function reportPost(
+  postId: number,
+  payload: PostReportPayload,
+): Promise<CommunityPostReport> {
+  const response = await apiClient.post<CommunityPostReport>(
+    `/posts/${postId}/report`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function hidePost(
+  postId: number,
+  reason: string | null,
+): Promise<PostModerationAction> {
+  const response = await apiClient.post<PostModerationAction>(`/posts/${postId}/hide`, {
+    reason,
+  });
+  return response.data;
+}
+
+export async function unhidePost(
+  postId: number,
+  reason: string | null,
+): Promise<PostModerationAction> {
+  const response = await apiClient.post<PostModerationAction>(`/posts/${postId}/unhide`, {
+    reason,
+  });
+  return response.data;
+}
+
+export async function getCommunityBlockedWords(
+  communityId: number,
+): Promise<CommunityBlockedWord[]> {
+  const response = await apiClient.get<CommunityBlockedWord[]>(
+    `/communities/${communityId}/blocked-words`,
+  );
+  return response.data;
+}
+
+export async function createCommunityBlockedWord(
+  communityId: number,
+  payload: CommunityBlockedWordCreatePayload,
+): Promise<CommunityBlockedWord> {
+  const response = await apiClient.post<CommunityBlockedWord>(
+    `/communities/${communityId}/blocked-words`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function deleteCommunityBlockedWord(
+  communityId: number,
+  blockedWordId: number,
+): Promise<void> {
+  await apiClient.delete(`/communities/${communityId}/blocked-words/${blockedWordId}`);
 }
 
 export async function getEntityReviews(entityId: number): Promise<ReviewListItem[]> {

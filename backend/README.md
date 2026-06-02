@@ -11,7 +11,8 @@ Current scope:
 - Phase 5A backend auth foundation.
 - Phase 5C auth-protected user write actions.
 - Phase 6A backend communities core.
-- No frontend community UI, community posts, feed, ingestion API calls, recommendations, or ML yet.
+- Phase 6C backend community posts core.
+- No frontend post UI, feed, ingestion API calls, recommendations, or ML yet.
 
 ## Setup
 
@@ -86,6 +87,12 @@ The community core is included in migration `0005_create_community_tables.py`. A
 alembic upgrade head
 ```
 
+The community posts core is included in migration `0006_create_community_post_tables.py`. Apply it with:
+
+```powershell
+alembic upgrade head
+```
+
 ## Seed Data
 
 After PostgreSQL is running and migrations are applied:
@@ -98,6 +105,7 @@ The seed script inserts sample Film, Series, Song, Album, and Person entities.
 It also inserts demo users and sample reviews when review tables are migrated.
 It also inserts sample watchlist, favourites, and custom collections when collection tables are migrated.
 It also inserts sample communities when community tables are migrated.
+It also inserts sample community posts when community post tables are migrated.
 
 Seeded auth credentials:
 
@@ -311,8 +319,8 @@ Temporary dev compatibility routes still exist while the frontend migrates fully
 
 ## Community API Examples
 
-Community posts are not implemented yet. User posts will exist inside communities
-in a later phase. The global feed remains curated and is not user-post-driven.
+Community posts exist only inside communities. They are not global feed posts.
+The global feed remains curated/admin-controlled and is not part of this phase.
 
 List communities:
 
@@ -374,4 +382,62 @@ Invoke-RestMethod "http://127.0.0.1:8000/communities/1/report" `
   -Headers @{ Authorization = "Bearer $token" } `
   -ContentType "application/json" `
   -Body '{"reason":"duplicate","details":"This may duplicate another community."}'
+```
+
+## Community Post API Examples
+
+List posts for a community:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1/posts"
+```
+
+Create a post inside a community:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1/posts" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"post_type":"discussion","title":"First theory thread","body":"This only appears inside the community.","spoiler":false}'
+```
+
+Update your own post:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/posts/1" `
+  -Method Patch `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"title":"Updated theory thread","body":"Updated community-only post body."}'
+```
+
+Report a post:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/posts/1/report" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"reason":"spoiler","details":"This may need a spoiler flag."}'
+```
+
+Hide a post as a community owner, moderator, admin, or super admin:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/posts/1/hide" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"reason":"Needs moderation review."}'
+```
+
+Add a blocked word as a community owner, moderator, admin, or super admin:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/communities/1/blocked-words" `
+  -Method Post `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"word":"blockedterm"}'
 ```

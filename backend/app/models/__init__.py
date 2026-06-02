@@ -20,14 +20,17 @@ from app.models.entity import (
     UserEvent,
 )
 from app.models.review import Review, ReviewEditHistory, ReviewReport, ReviewTag
+from app.models.post import CommunityBlockedWord, CommunityPost, PostModerationAction, PostReport
 from app.models.user import Profile, User
 
 __all__ = [
     "Collection",
     "CollectionItem",
     "Community",
+    "CommunityBlockedWord",
     "CommunityMember",
     "CommunityMergeRequest",
+    "CommunityPost",
     "CommunityReport",
     "CommunityRule",
     "Entity",
@@ -40,6 +43,8 @@ __all__ = [
     "ExternalId",
     "IngestionJob",
     "Profile",
+    "PostModerationAction",
+    "PostReport",
     "RawExternalPayload",
     "Review",
     "ReviewEditHistory",

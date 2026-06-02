@@ -59,6 +59,17 @@ class User(Base):
     community_merge_requests: Mapped[list["CommunityMergeRequest"]] = relationship(
         back_populates="requested_by",
     )
+    community_posts: Mapped[list["CommunityPost"]] = relationship(
+        back_populates="author",
+        cascade="all, delete-orphan",
+    )
+    post_reports: Mapped[list["PostReport"]] = relationship(back_populates="reporter")
+    post_moderation_actions: Mapped[list["PostModerationAction"]] = relationship(
+        back_populates="moderator",
+    )
+    community_blocked_words: Mapped[list["CommunityBlockedWord"]] = relationship(
+        back_populates="created_by",
+    )
 
 
 class Profile(Base):

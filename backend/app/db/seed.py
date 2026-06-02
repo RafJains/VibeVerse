@@ -15,6 +15,7 @@ from app.models.entity import (
     EntityTag,
     EntityType,
 )
+from app.models.post import CommunityPost
 from app.models.review import Review, ReviewTag
 from app.models.user import Profile, User
 
@@ -407,6 +408,50 @@ def sync_community_member_count(db: Session, community: Community) -> None:
     )
 
 
+def add_community_post_if_missing(
+    db: Session,
+    *,
+    community: Community,
+    author: User,
+    post_type: str,
+    title: str,
+    body: str,
+    spoiler: bool = False,
+    media_url: str | None = None,
+) -> CommunityPost:
+    post = (
+        db.query(CommunityPost)
+        .filter(
+            CommunityPost.community_id == community.id,
+            CommunityPost.author_user_id == author.id,
+            CommunityPost.title == title,
+        )
+        .one_or_none()
+    )
+    if post is not None:
+        post.post_type = post_type
+        post.body = body
+        post.media_url = media_url
+        post.spoiler = spoiler
+        if post.status == "removed":
+            post.status = "published"
+        return post
+
+    post = CommunityPost(
+        community_id=community.id,
+        author_user_id=author.id,
+        post_type=post_type,
+        title=title,
+        body=body,
+        media_url=media_url,
+        spoiler=spoiler,
+        status="published",
+    )
+    db.add(post)
+    db.flush()
+    return post
+
+
 def seed_entities() -> None:
     db = SessionLocal()
     try:
@@ -644,6 +689,32 @@ def seed_entities() -> None:
         sync_community_member_count(db, inception_fans)
         sync_community_member_count(db, demon_slayer_corps)
         sync_community_member_count(db, weeknd_listeners)
+
+        add_community_post_if_missing(
+            db,
+            community=inception_fans,
+            author=demo_user,
+            post_type="discussion",
+            title="What layer do you rewatch first?",
+            body="The hotel sequence still feels like the cleanest entry point for a rewatch discussion.",
+        )
+        add_community_post_if_missing(
+            db,
+            community=demon_slayer_corps,
+            author=demo_user,
+            post_type="fan_theory",
+            title="Tanjiro's empathy is the real power scaling",
+            body="The action gets attention, but the emotional reads shape most major turning points.",
+            spoiler=True,
+        )
+        add_community_post_if_missing(
+            db,
+            community=weeknd_listeners,
+            author=critic_user,
+            post_type="reaction",
+            title="After Hours still owns the night-drive mood",
+            body="The synth palette and sequencing make the album feel more cohesive with every replay.",
+        )
 
         db.commit()
         print("Seed data inserted successfully.")

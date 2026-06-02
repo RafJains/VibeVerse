@@ -86,6 +86,14 @@ class Community(Base):
         cascade="all, delete-orphan",
         foreign_keys="CommunityMergeRequest.target_community_id",
     )
+    posts: Mapped[list["CommunityPost"]] = relationship(
+        back_populates="community",
+        cascade="all, delete-orphan",
+    )
+    blocked_words: Mapped[list["CommunityBlockedWord"]] = relationship(
+        back_populates="community",
+        cascade="all, delete-orphan",
+    )
 
 
 class CommunityMember(Base):
