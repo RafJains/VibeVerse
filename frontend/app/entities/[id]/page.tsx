@@ -2,26 +2,55 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import EntityTypeBadge from "@/components/EntityTypeBadge";
 import ErrorState from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
 import PageHeader from "@/components/PageHeader";
 import {
+  addToFavourites,
+  addToWatchlist,
+  createReview,
   getEntity,
   getEntityCredits,
   getEntityMedia,
+  getEntityRatingSummary,
   getEntityRelations,
+  getEntityReviews,
   getErrorMessage,
 } from "@/lib/api";
 import type { Entity, EntityCredit, EntityMedia, EntityRelation } from "@/types/entity";
+import type { EntityRatingSummary, ReviewListItem, ReviewVisibility } from "@/types/review";
+
+// Temporary until auth is implemented and the logged-in user comes from session state.
+const DEMO_USER_ID = 1;
 
 type EntityDetailState = {
   entity: Entity;
   media: EntityMedia[];
   credits: EntityCredit[];
   related: EntityRelation[];
+  reviews: ReviewListItem[];
+  ratingSummary: EntityRatingSummary;
+};
+
+type ReviewFormState = {
+  title: string;
+  body: string;
+  rating: string;
+  spoiler: boolean;
+  visibility: ReviewVisibility;
+  tags: string;
+};
+
+const initialReviewForm: ReviewFormState = {
+  title: "",
+  body: "",
+  rating: "4.0",
+  spoiler: false,
+  visibility: "public",
+  tags: "",
 };
 
 export default function EntityDetailPage() {
@@ -29,49 +58,125 @@ export default function EntityDetailPage() {
   const [data, setData] = useState<EntityDetailState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewForm, setReviewForm] = useState<ReviewFormState>(initialReviewForm);
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savingTarget, setSavingTarget] = useState<"watchlist" | "favourites" | null>(null);
+
+  const entityId = Number(params.id);
+
+  async function loadEntityDetails(shouldUpdate: () => boolean = () => true) {
+    if (!Number.isInteger(entityId) || entityId <= 0) {
+      setError("Invalid entity id.");
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [entity, media, credits, related, reviews, ratingSummary] = await Promise.all([
+        getEntity(entityId),
+        getEntityMedia(entityId),
+        getEntityCredits(entityId),
+        getEntityRelations(entityId),
+        getEntityReviews(entityId),
+        getEntityRatingSummary(entityId),
+      ]);
+
+      if (shouldUpdate()) {
+        setData({ entity, media, credits, related, reviews, ratingSummary });
+      }
+    } catch (loadError) {
+      if (shouldUpdate()) {
+        setError(getErrorMessage(loadError));
+      }
+    } finally {
+      if (shouldUpdate()) {
+        setIsLoading(false);
+      }
+    }
+  }
 
   useEffect(() => {
     let isActive = true;
-    const entityId = Number(params.id);
-
-    async function loadEntity() {
-      if (!Number.isInteger(entityId) || entityId <= 0) {
-        setError("Invalid entity id.");
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const [entity, media, credits, related] = await Promise.all([
-          getEntity(entityId),
-          getEntityMedia(entityId),
-          getEntityCredits(entityId),
-          getEntityRelations(entityId),
-        ]);
-
-        if (isActive) {
-          setData({ entity, media, credits, related });
-        }
-      } catch (loadError) {
-        if (isActive) {
-          setError(getErrorMessage(loadError));
-        }
-      } finally {
-        if (isActive) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadEntity();
+    loadEntityDetails(() => isActive);
 
     return () => {
       isActive = false;
     };
-  }, [params.id]);
+    // loadEntityDetails is intentionally kept local to this page and keyed by entityId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityId]);
+
+  async function handleReviewSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setReviewMessage(null);
+    setReviewError(null);
+
+    if (!data) {
+      return;
+    }
+
+    const body = reviewForm.body.trim();
+    if (!body) {
+      setReviewError("Review body is required.");
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      await createReview({
+        entity_id: data.entity.id,
+        user_id: DEMO_USER_ID,
+        rating: Number(reviewForm.rating),
+        title: reviewForm.title.trim() || null,
+        body,
+        spoiler: reviewForm.spoiler,
+        visibility: reviewForm.visibility,
+        tags: reviewForm.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      });
+
+      setReviewForm(initialReviewForm);
+      setReviewMessage("Review submitted.");
+      await loadEntityDetails();
+    } catch (submitError) {
+      setReviewError(getErrorMessage(submitError));
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  }
+
+  async function handleSave(target: "watchlist" | "favourites") {
+    if (!data) {
+      return;
+    }
+
+    setSaveMessage(null);
+    setSaveError(null);
+    setSavingTarget(target);
+
+    try {
+      if (target === "watchlist") {
+        await addToWatchlist(DEMO_USER_ID, data.entity.id);
+        setSaveMessage("Saved to watchlist.");
+      } else {
+        await addToFavourites(DEMO_USER_ID, data.entity.id);
+        setSaveMessage("Saved to favourites.");
+      }
+    } catch (saveFailure) {
+      setSaveError(getErrorMessage(saveFailure));
+    } finally {
+      setSavingTarget(null);
+    }
+  }
 
   if (isLoading) {
     return <LoadingState label="Loading entity details..." />;
@@ -85,7 +190,7 @@ export default function EntityDetailPage() {
     return <ErrorState message="Entity details are unavailable." />;
   }
 
-  const { entity, media, credits, related } = data;
+  const { entity, media, credits, related, reviews, ratingSummary } = data;
 
   return (
     <div>
@@ -93,7 +198,11 @@ export default function EntityDetailPage() {
         Back to entities
       </Link>
 
-      <PageHeader eyebrow="Entity Detail" title={entity.name} description={entity.description ?? undefined} />
+      <PageHeader
+        eyebrow="Entity Detail"
+        title={entity.name}
+        description={entity.description ?? undefined}
+      />
 
       <section className="mb-6 rounded-lg border border-border bg-card p-5">
         <div className="flex flex-wrap items-center gap-3">
@@ -122,7 +231,43 @@ export default function EntityDetailPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <section className="mb-6 grid gap-4 rounded-lg border border-border bg-card p-5 sm:grid-cols-3">
+        <MetricCard
+          label="Average rating"
+          value={ratingSummary.average_rating?.toFixed(1) ?? "No ratings"}
+        />
+        <MetricCard label="Reviews" value={ratingSummary.review_count.toString()} />
+        <MetricCard label="Ratings" value={ratingSummary.rating_count.toString()} />
+      </section>
+
+      <section className="mb-6 rounded-lg border border-border bg-card p-5">
+        <h2 className="text-lg font-semibold">Save actions</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Using demo user #{DEMO_USER_ID} until authentication is implemented.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => handleSave("watchlist")}
+            disabled={savingTarget !== null}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {savingTarget === "watchlist" ? "Saving..." : "Add to watchlist"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSave("favourites")}
+            disabled={savingTarget !== null}
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {savingTarget === "favourites" ? "Saving..." : "Add to favourites"}
+          </button>
+        </div>
+        {saveMessage ? <p className="mt-3 text-sm text-green-700">{saveMessage}</p> : null}
+        {saveError ? <p className="mt-3 text-sm text-red-700">{saveError}</p> : null}
+      </section>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
         <DetailSection title="Media">
           {media.length > 0 ? (
             <ul className="space-y-3">
@@ -180,6 +325,164 @@ export default function EntityDetailPage() {
           )}
         </DetailSection>
       </div>
+
+      <section className="mb-6 rounded-lg border border-border bg-card p-5">
+        <h2 className="text-lg font-semibold">Reviews</h2>
+        {reviews.length > 0 ? (
+          <div className="mt-4 space-y-4">
+            {reviews.map((review) => (
+              <article key={review.id} className="rounded-md border border-border p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold">{review.rating.toFixed(1)} / 5</span>
+                  {review.spoiler ? (
+                    <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
+                      Spoiler
+                    </span>
+                  ) : null}
+                  <span className="text-xs text-muted-foreground">
+                    User #{review.user_id}
+                  </span>
+                </div>
+                {review.title ? <h3 className="mt-3 font-semibold">{review.title}</h3> : null}
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.body}</p>
+                {review.tags.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {review.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground"
+                      >
+                        {tag.tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">No reviews yet.</p>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-border bg-card p-5">
+        <h2 className="text-lg font-semibold">Write a review</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This form submits as demo user #{DEMO_USER_ID} until auth is implemented.
+        </p>
+
+        <form onSubmit={handleReviewSubmit} className="mt-5 grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium">
+              Title
+              <input
+                value={reviewForm.title}
+                onChange={(event) =>
+                  setReviewForm((current) => ({ ...current, title: event.target.value }))
+                }
+                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                placeholder="Optional short title"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Rating
+              <select
+                value={reviewForm.rating}
+                onChange={(event) =>
+                  setReviewForm((current) => ({ ...current, rating: event.target.value }))
+                }
+                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+              >
+                {["0.5", "1.0", "1.5", "2.0", "2.5", "3.0", "3.5", "4.0", "4.5", "5.0"].map(
+                  (rating) => (
+                    <option key={rating} value={rating}>
+                      {rating}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+          </div>
+
+          <label className="grid gap-2 text-sm font-medium">
+            Body
+            <textarea
+              value={reviewForm.body}
+              onChange={(event) =>
+                setReviewForm((current) => ({ ...current, body: event.target.value }))
+              }
+              className="min-h-32 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              placeholder="Share your thoughts"
+              required
+            />
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium">
+              Visibility
+              <select
+                value={reviewForm.visibility}
+                onChange={(event) =>
+                  setReviewForm((current) => ({
+                    ...current,
+                    visibility: event.target.value as ReviewVisibility,
+                  }))
+                }
+                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+              >
+                <option value="public">Public</option>
+                <option value="followers">Followers</option>
+                <option value="private">Private</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Tags
+              <input
+                value={reviewForm.tags}
+                onChange={(event) =>
+                  setReviewForm((current) => ({ ...current, tags: event.target.value }))
+                }
+                className="min-h-11 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary"
+                placeholder="anime, rewatchable"
+              />
+            </label>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={reviewForm.spoiler}
+              onChange={(event) =>
+                setReviewForm((current) => ({ ...current, spoiler: event.target.checked }))
+              }
+              className="h-4 w-4"
+            />
+            Contains spoilers
+          </label>
+
+          <div>
+            <button
+              type="submit"
+              disabled={isSubmittingReview}
+              className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmittingReview ? "Submitting..." : "Submit review"}
+            </button>
+          </div>
+
+          {reviewMessage ? <p className="text-sm text-green-700">{reviewMessage}</p> : null}
+          {reviewError ? <p className="text-sm text-red-700">{reviewError}</p> : null}
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border p-4">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold">{value}</p>
     </div>
   );
 }
