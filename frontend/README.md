@@ -9,11 +9,12 @@ Current scope:
 - Entity browsing pages connected to the FastAPI backend.
 - Frontend signup, login, logout, and current-user session state.
 - Review and save actions use the logged-in user.
-- Placeholder routes for future feed, communities, full collections, and admin phases.
+- Community browsing, detail, creation, join, leave, and entity-linked community sections.
+- Placeholder routes for future feed, full collections, and admin phases.
 
 Not included yet:
 
-- Community logic
+- Community posts, comments, polls, or moderation dashboards
 - Feed logic
 - External API ingestion
 - Recommendations or ML
@@ -80,6 +81,21 @@ as a Bearer token through the centralized API client.
 
 Review and save actions require a logged-in user. The frontend does not send
 `user_id` for those actions; the backend derives ownership from the Bearer token.
+
+Communities use:
+
+```text
+GET /communities
+GET /communities/{id}
+GET /entities/{entity_id}/communities
+GET /communities/{id}/members
+POST /communities
+POST /communities/{id}/join
+POST /communities/{id}/leave
+```
+
+Creating or joining communities requires a logged-in user. Public browse and
+detail pages still work without a session.
 
 ## Checks
 

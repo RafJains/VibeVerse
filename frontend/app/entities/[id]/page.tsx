@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+import CommunityGrid from "@/components/CommunityGrid";
 import EntityTypeBadge from "@/components/EntityTypeBadge";
 import ErrorState from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
@@ -13,6 +14,7 @@ import {
   addToWatchlist,
   createReview,
   getEntity,
+  getEntityCommunities,
   getEntityCredits,
   getEntityMedia,
   getEntityRatingSummary,
@@ -21,6 +23,7 @@ import {
   getErrorMessage,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import type { CommunityListItem } from "@/types/community";
 import type { Entity, EntityCredit, EntityMedia, EntityRelation } from "@/types/entity";
 import type { EntityRatingSummary, ReviewListItem, ReviewVisibility } from "@/types/review";
 
@@ -31,6 +34,7 @@ type EntityDetailState = {
   related: EntityRelation[];
   reviews: ReviewListItem[];
   ratingSummary: EntityRatingSummary;
+  communities: CommunityListItem[];
 };
 
 type ReviewFormState = {
@@ -79,17 +83,26 @@ export default function EntityDetailPage() {
     setError(null);
 
     try {
-      const [entity, media, credits, related, reviews, ratingSummary] = await Promise.all([
+      const [
+        entity,
+        media,
+        credits,
+        related,
+        reviews,
+        ratingSummary,
+        communities,
+      ] = await Promise.all([
         getEntity(entityId),
         getEntityMedia(entityId),
         getEntityCredits(entityId),
         getEntityRelations(entityId),
         getEntityReviews(entityId),
         getEntityRatingSummary(entityId),
+        getEntityCommunities(entityId),
       ]);
 
       if (shouldUpdate()) {
-        setData({ entity, media, credits, related, reviews, ratingSummary });
+        setData({ entity, media, credits, related, reviews, ratingSummary, communities });
       }
     } catch (loadError) {
       if (shouldUpdate()) {
@@ -199,7 +212,7 @@ export default function EntityDetailPage() {
     return <ErrorState message="Entity details are unavailable." />;
   }
 
-  const { entity, media, credits, related, reviews, ratingSummary } = data;
+  const { entity, media, credits, related, reviews, ratingSummary, communities } = data;
 
   return (
     <div>
@@ -279,6 +292,21 @@ export default function EntityDetailPage() {
         )}
         {saveMessage ? <p className="mt-3 text-sm text-green-700">{saveMessage}</p> : null}
         {saveError ? <p className="mt-3 text-sm text-red-700">{saveError}</p> : null}
+      </section>
+
+      <section className="mb-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Related Communities</h2>
+          {canUseUserActions ? (
+            <Link href="/communities/create" className="text-sm font-medium text-primary">
+              Create community
+            </Link>
+          ) : null}
+        </div>
+        <CommunityGrid
+          communities={communities}
+          emptyMessage="No related communities linked to this entity yet."
+        />
       </section>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-3">

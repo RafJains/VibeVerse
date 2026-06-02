@@ -60,6 +60,16 @@ export default function Navbar() {
                 {user.username}
               </span>
               <Link
+                href="/communities/create"
+                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+                  pathname.startsWith("/communities/create")
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                Create Community
+              </Link>
+              <Link
                 href="/profile"
                 className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                   pathname.startsWith("/profile")

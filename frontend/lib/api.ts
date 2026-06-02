@@ -4,6 +4,19 @@ import type {
   CollectionItem,
   CollectionListItem,
 } from "@/types/collection";
+import type {
+  Community,
+  CommunityCreatePayload,
+  CommunityListItem,
+  CommunityMember,
+  CommunityMergeRequest,
+  CommunityMergeRequestPayload,
+  CommunityReport,
+  CommunityReportPayload,
+  CommunityRule,
+  CommunityRuleCreatePayload,
+  CommunityType,
+} from "@/types/community";
 import type { LoginPayload, SignupPayload, TokenResponse, User } from "@/types/auth";
 import type {
   Entity,
@@ -128,6 +141,106 @@ export async function getEntityCredits(id: number): Promise<EntityCredit[]> {
 
 export async function getEntityRelations(id: number): Promise<EntityRelation[]> {
   const response = await apiClient.get<EntityRelation[]>(`/entities/${id}/related`);
+  return response.data;
+}
+
+export async function getCommunities(params?: {
+  entity_id?: number;
+  community_type?: CommunityType | "";
+  search?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<CommunityListItem[]> {
+  const response = await apiClient.get<CommunityListItem[]>("/communities", {
+    params: {
+      ...params,
+      community_type: params?.community_type || undefined,
+      search: params?.search?.trim() || undefined,
+    },
+  });
+  return response.data;
+}
+
+export async function getCommunity(id: number): Promise<Community> {
+  const response = await apiClient.get<Community>(`/communities/${id}`);
+  return response.data;
+}
+
+export async function getCommunityBySlug(slug: string): Promise<Community> {
+  const response = await apiClient.get<Community>(`/communities/slug/${slug}`);
+  return response.data;
+}
+
+export async function getEntityCommunities(entityId: number): Promise<CommunityListItem[]> {
+  const response = await apiClient.get<CommunityListItem[]>(
+    `/entities/${entityId}/communities`,
+  );
+  return response.data;
+}
+
+export async function getCommunityMembers(
+  communityId: number,
+): Promise<CommunityMember[]> {
+  const response = await apiClient.get<CommunityMember[]>(
+    `/communities/${communityId}/members`,
+  );
+  return response.data;
+}
+
+export async function createCommunity(
+  payload: CommunityCreatePayload,
+): Promise<Community> {
+  const response = await apiClient.post<Community>("/communities", payload);
+  return response.data;
+}
+
+export async function joinCommunity(
+  communityId: number,
+): Promise<CommunityMember> {
+  const response = await apiClient.post<CommunityMember>(
+    `/communities/${communityId}/join`,
+  );
+  return response.data;
+}
+
+export async function leaveCommunity(
+  communityId: number,
+): Promise<CommunityMember> {
+  const response = await apiClient.post<CommunityMember>(
+    `/communities/${communityId}/leave`,
+  );
+  return response.data;
+}
+
+export async function reportCommunity(
+  communityId: number,
+  payload: CommunityReportPayload,
+): Promise<CommunityReport> {
+  const response = await apiClient.post<CommunityReport>(
+    `/communities/${communityId}/report`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function createCommunityRule(
+  communityId: number,
+  payload: CommunityRuleCreatePayload,
+): Promise<CommunityRule> {
+  const response = await apiClient.post<CommunityRule>(
+    `/communities/${communityId}/rules`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function createCommunityMergeRequest(
+  payload: CommunityMergeRequestPayload,
+): Promise<CommunityMergeRequest> {
+  const response = await apiClient.post<CommunityMergeRequest>(
+    "/communities/merge-requests",
+    payload,
+  );
   return response.data;
 }
 
